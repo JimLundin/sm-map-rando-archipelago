@@ -61,7 +61,7 @@ jobs:
             echo "**Building the world failed:**" >> $report
             echo '```' >> $report; tail -40 build.log >> $report; echo '```' >> $report; exit 0; }
           echo "### Generator output" >> $report
-          echo '```' >> $report; grep -E 'warning|CHANGED|Wrote|World version' build.log >> $report; echo '```' >> $report
+          echo '```' >> $report; grep -E '^(warning: |CHANGED|Wrote .*Options|World version)' build.log >> $report; echo '```' >> $report
           if grep -q CHANGED build.log; then
             echo "**Upstream code mirrored by this repository changed: review it, then run \`python tools/upstream_checks.py --update\`.**" >> $report
           fi
