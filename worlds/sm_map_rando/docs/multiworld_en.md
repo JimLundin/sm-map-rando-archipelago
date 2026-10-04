@@ -20,8 +20,9 @@
 2. The first time a Super Metroid Map Rando patch is opened, you will be asked to locate your Super Metroid ROM file.
 3. If you are using an emulator, assign it as the default program for `.sfc` files, so that it opens automatically.
 
-The world includes the native Map Rando randomizer for Windows (x86-64) and Linux (x86-64). On first use it is
-extracted to the Archipelago cache directory. For other platforms (e.g. macOS), see "Building the native module" below.
+The world includes the native Map Rando randomizer for Windows (x86-64), Linux (x86-64 and aarch64) and macOS
+(Intel and Apple Silicon). On first use it is extracted to the Archipelago cache directory. For other platforms, see
+"Building the native module" below.
 
 ## Create a Config (.yaml) File
 
@@ -153,12 +154,14 @@ The recommended way to host a game is to use our hosting service. The process is
 ## Building the native module
 
 The randomizer is Rust code (the upstream Map Rando crates plus thin Python bindings, `pysmmaprando`). To build it for
-another platform, install Rust and [maturin](https://www.maturin.rs/), then in the `rust/pysmmaprando` directory of the
-Map Rando sources used by this world run:
+another platform, install Rust and [maturin](https://www.maturin.rs/), then, in a clone of
+[the world's repository](https://github.com/JimLundin/sm-map-rando-archipelago):
 
 ```
-maturin build --release
-pip install target/wheels/pysmmaprando-*.whl
+python tools/prepare_upstream.py
+cd native/pysmmaprando
+maturin build --release -o dist
+pip install dist/pysmmaprando-*.whl
 ```
 
 An installed `pysmmaprando` of the right version is used in preference to the bundled ones.

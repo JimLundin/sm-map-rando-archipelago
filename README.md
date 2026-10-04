@@ -8,7 +8,8 @@ This is a continuation of [lordlou's Map Rando Archipelago world](https://github
 
 **Download**: see [Releases](https://github.com/JimLundin/sm-map-rando-archipelago/releases):
 
-- `sm_map_rando.apworld`: the world (includes the native randomizer for Windows x86-64 and Linux x86-64).
+- `sm_map_rando.apworld`: the world (includes the native randomizer for Windows x86-64, Linux x86-64/aarch64 and
+  macOS).
 - `Super Metroid Map Rando.yaml`: a template with every option and its documentation.
 
 You need your own Super Metroid (JU) ROM; none is included or distributed.
@@ -92,8 +93,9 @@ in every room state.
   with a real SNI client connection.
 - With several Map Rando worlds in one multiworld, generation can occasionally fail during fill (none in the latest
   test runs with `local_early_progression`); regenerating with another seed works.
-- Native module bundled for Windows x86-64 and Linux x86-64 only; other platforms need to build it (see the setup
-  guide).
+- Native module bundled for Windows x86-64, Linux x86-64/aarch64 and macOS (universal2); other platforms need to build
+  it (see the setup guide). The macOS and Linux aarch64 builds are built and tested by CI but haven't been tried by a
+  player yet.
 - Item fanfares: items in the ROM use the Archipelago item PLMs, which play a sound effect rather than the fanfare,
   regardless of the `fanfares` setting.
 - Some combinations of settings are too restrictive for Map Rando (e.g. Basic skill assumptions with collectible wall
