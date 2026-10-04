@@ -1,0 +1,450 @@
+"""
+Building Map Rando settings (the same JSON as used by the maprando.com website) from the world's options.
+
+Settings are built in layers, as on the website:
+  1. the base settings: either the given "map_rando_settings" JSON, or the selected full settings preset;
+  2. category presets (skill assumptions, item progression, quality of life, objectives, doors);
+  3. presets of groups of settings within categories (enhanced map, initial map reveal, crash fixes, ...);
+  4. individual settings.
+Afterwards, the "preset" fields are recomputed: a category is labelled with a preset's name only if its settings
+match that preset (otherwise Map Rando would reset the settings to the named preset).
+"""
+from __future__ import annotations
+
+import copy
+import functools
+import json
+import pkgutil
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
+from Options import OptionError
+
+from .option_types import MapRandoSetting
+
+if TYPE_CHECKING:
+    from . import SMMapRandoWorld
+
+PRESETS_DIR = "data/maprando/rust/data/presets"
+DATA_DIR = "data/maprando/rust/data"
+
+UNIQUE_ITEMS = ["Bombs", "Charge", "Ice", "HiJump", "SpeedBooster", "Wave", "Spazer", "SpringBall", "Varia",
+                "Gravity", "XRayScope", "Plasma", "Grapple", "SpaceJump", "ScrewAttack", "Morph", "WallJump",
+                "SparkBooster", "BlueBooster"]
+MULTI_ITEMS = ["Missile", "ETank", "ReserveTank", "Super", "PowerBomb"]
+FULL_POOL = {"Missile": 46, "ETank": 14, "ReserveTank": 4, "Super": 10, "PowerBomb": 10}
+REDUCED_POOL = {"Missile": 12, "ETank": 3, "ReserveTank": 3, "Super": 6, "PowerBomb": 5}
+
+
+def _json_data(path: str) -> Any:
+    data = pkgutil.get_data(__name__, path)
+    if data is None:
+        raise FileNotFoundError(path)
+    return json.loads(data.decode("utf-8"))
+
+
+@functools.lru_cache(maxsize=None)
+def _preset_cached(category_dir: str, name: str) -> str:
+    return json.dumps(_json_data(f"{PRESETS_DIR}/{category_dir}/{name}.json"))
+
+
+def load_preset(category_dir: str, name: str) -> Dict[str, Any]:
+    return json.loads(_preset_cached(category_dir, name))
+
+
+CATEGORY_PRESETS = {
+    "skill_assumption_settings": ("skill-assumptions", ["Implicit", "Basic", "Medium", "Hard", "Very Hard", "Expert",
+                                                        "Expert+", "Extreme", "Extreme+", "Insane", "Insane+",
+                                                        "Beyond"]),
+    "item_progression_settings": ("item-progression", ["Normal", "Tricky", "Technical", "Challenge", "Desolate"]),
+    "quality_of_life_settings": ("quality-of-life", ["Off", "Low", "Default", "High", "Max"]),
+    "objective_settings": ("objectives", ["None", "Bosses", "Minibosses", "Chozos", "Pirates", "Metroids", "Random"]),
+    "doors_settings": ("doors", ["Blue", "Ammo", "Beam"]),
+}
+FULL_PRESETS = ["Default", "Community Race Season 5", "Mentor Tournament", "Summer Series Expert Challenge"]
+
+
+# --- Presets of groups of settings (these are defined in the website's JavaScript and in settings.rs) --------------
+
+def _enhanced_map(preset: str) -> Dict[str, Any]:
+    yes = preset == "Yes"
+    out: Dict[str, Any] = {"preset": preset}
+    for f in ["blue_doors", "gray_doors", "ammo_doors", "beam_doors", "heat", "water", "lava", "acid"]:
+        out[f] = "Visible" if yes else "Hidden"
+    out["walls"] = "Enhanced" if yes else "Vanilla"
+    for f in ["objectives", "map_station", "refill_station"]:
+        out[f] = "Icon" if yes else "Vanilla"
+    return out
+
+
+REVEAL_FIELDS = ["map_stations", "save_stations", "refill_stations", "ship", "objectives", "area_transitions",
+                 "items1", "items2", "items3", "items4", "other"]
+
+
+def _initial_map_reveal(preset: str) -> Dict[str, Any]:
+    level = {"No": "No", "Maps": "No", "Partial": "Partial", "Full": "Full", "Global": "Full"}[preset]
+    out: Dict[str, Any] = {"preset": preset}
+    for f in REVEAL_FIELDS:
+        out[f] = level
+    if preset == "Maps":
+        out["map_stations"] = "Full"
+    out["all_areas"] = preset == "Global"
+    return out
+
+
+def _map_station_activation(preset: str) -> Dict[str, Any]:
+    out: Dict[str, Any] = {"preset": preset}
+    for f in REVEAL_FIELDS[1:]:
+        out[f] = preset
+    out["sub_area"] = "Same"
+    return out
+
+
+def _crash_fixes(preset: str) -> Dict[str, Any]:
+    out: Dict[str, Any] = {"preset": preset}
+    for f in ["spring_ball", "yapping_maw", "auto_reserve", "x_mode"]:
+        out[f] = preset
+    out["sprite_overflow"] = "Crash" if preset == "Crash" else "Silent"
+    return out
+
+
+def _area_assignment(preset: str) -> Dict[str, Any]:
+    standard = preset == "Standard"
+    return {"preset": preset, "base_order": "Size" if preset in ("Standard", "Size") else preset,
+            "ship_in_crateria": standard, "mother_brain_in_tourian": standard}
+
+
+SUB_PRESETS = {
+    "quality_of_life_settings.enhanced_map_settings": (_enhanced_map, ["No", "Yes"]),
+    "quality_of_life_settings.initial_map_reveal_settings": (_initial_map_reveal,
+                                                             ["No", "Maps", "Partial", "Full", "Global"]),
+    "quality_of_life_settings.map_station_activation_settings": (_map_station_activation, ["Partial", "Full"]),
+    "quality_of_life_settings.crash_fixes": (_crash_fixes, ["Crash", "Death", "Warn", "Silent"]),
+    "other_settings.area_assignment": (_area_assignment, ["Standard", "Size", "Depth", "Random"]),
+}
+
+
+def _apply_item_pool_preset(items: Dict[str, Any], preset: str) -> None:
+    pool = FULL_POOL if preset == "Full" else REDUCED_POOL
+    items["item_pool_preset"] = preset
+    items["stop_item_placement_early"] = preset == "Reduced"
+    items["item_pool"] = [{"item": k, "count": v} for k, v in pool.items()] + \
+                         [{"item": k, "count": 1} for k in UNIQUE_ITEMS]
+    for f, v in [("missile_size", 5), ("super_size", 5), ("powerbomb_size", 5), ("etank_size", 1),
+                 ("reserve_size", 1)]:
+        items[f] = v
+
+
+def _apply_starting_items_preset(items: Dict[str, Any], preset: str) -> None:
+    items["starting_items_preset"] = preset
+    if preset == "All":
+        items["starting_items"] = [{"item": k, "count": v} for k, v in FULL_POOL.items()] + \
+                                  [{"item": k, "count": 1} for k in UNIQUE_ITEMS]
+    else:
+        items["starting_items"] = [{"item": k, "count": 0} for k in MULTI_ITEMS + UNIQUE_ITEMS]
+
+
+# --- Helpers ---------------------------------------------------------------------------------------------------------
+
+def get_path(settings: Dict[str, Any], path: str) -> Any:
+    node: Any = settings
+    for part in path.split("."):
+        node = node[part]
+    return node
+
+
+def set_path(settings: Dict[str, Any], path: str, value: Any) -> None:
+    parts = path.split(".")
+    node = settings
+    for part in parts[:-1]:
+        node = node.setdefault(part, {})
+    node[parts[-1]] = value
+
+
+def item_counts(entries: List[Dict[str, Any]], default_unique: int) -> Dict[str, int]:
+    counts = {k: 0 for k in MULTI_ITEMS}
+    counts.update({k: default_unique for k in UNIQUE_ITEMS})
+    for e in entries:
+        counts[e["item"]] = e["count"]
+    return counts
+
+
+def item_priorities(entries: List[Dict[str, Any]]) -> Dict[str, str]:
+    return {e["item"]: e["priority"] for e in entries}
+
+
+# Keys found in some preset files which are not (or no longer) part of Map Rando's settings, and are ignored by it
+STALE_KEYS = {"other_settings": {"etank_refill", "item_dot_change", "transition_letters", "maps_revealed",
+                                 "map_station_reveal", "ultra_low_qol"}}
+
+
+def remove_stale_keys(settings: Dict[str, Any]) -> None:
+    for section, keys in STALE_KEYS.items():
+        for key in keys:
+            settings.get(section, {}).pop(key, None)
+
+
+def canonical(value: Any, key: str = "") -> Any:
+    """
+    Canonical form of settings for comparison: ignoring preset names, list ordering, number types, null values and
+    keys that aren't Map Rando settings.
+    """
+    if isinstance(value, dict):
+        ignored = STALE_KEYS.get(key, set()) | {"preset", "item_pool_preset", "starting_items_preset", "name",
+                                                "debug"}
+        return {k: canonical(v, k) for k, v in value.items() if k not in ignored and v is not None}
+    if isinstance(value, list):
+        if key == "tech_settings":
+            return {e["id"]: e["enabled"] for e in value}
+        if key == "notable_settings":
+            return {f"{e['room_id']}:{e['notable_id']}": e["enabled"] for e in value}
+        if key == "item_pool":
+            return item_counts(value, 1)
+        if key == "starting_items":
+            return item_counts(value, 0)
+        if key in ("key_item_priority", "filler_items"):
+            return item_priorities(value)
+        if key == "objective_options":
+            return {e["objective"]: e["setting"] for e in value}
+        return [canonical(v) for v in value]
+    if isinstance(value, bool) or value is None or isinstance(value, str):
+        return value
+    if isinstance(value, (int, float)):
+        return round(float(value), 6)
+    return value
+
+
+def same(a: Any, b: Any, key: str = "") -> bool:
+    return canonical(a, key) == canonical(b, key)
+
+
+@functools.lru_cache(maxsize=None)
+def tech_tiers() -> Dict[str, List[str]]:
+    tiers: Dict[str, List[str]] = {}
+    for t in _json_data(f"{DATA_DIR}/tech_data.json"):
+        tiers.setdefault(t["difficulty"], []).append(t["name"])
+    return tiers
+
+
+@functools.lru_cache(maxsize=None)
+def notable_tiers() -> Dict[str, List[str]]:
+    tiers: Dict[str, List[str]] = {}
+    for n in _json_data(f"{DATA_DIR}/notable_data.json"):
+        tiers.setdefault(n["difficulty"], []).append(f"{n['room_name']}: {n['name']}")
+    return tiers
+
+
+def _expand_tiers(names, tiers: Dict[str, List[str]]) -> set:
+    out = set()
+    for name in names:
+        out.update(tiers.get(name, [name]))
+    return out
+
+
+@functools.lru_cache(maxsize=None)
+def start_locations() -> List[Dict[str, Any]]:
+    return _json_data("data/start_locations.json")
+
+
+# --- Building --------------------------------------------------------------------------------------------------------
+
+def base_settings(world: "SMMapRandoWorld") -> Dict[str, Any]:
+    from . import native
+    options = world.options
+    if options.map_rando_settings.value:
+        try:
+            return native.upgrade_settings(copy.deepcopy(dict(options.map_rando_settings.value)))
+        except Exception as e:
+            raise OptionError(f"Super Metroid Map Rando: invalid map_rando_settings for player "
+                              f"{world.player_name}: {e}") from e
+    preset_name = options.settings_preset.preset_names[options.settings_preset.value]
+    settings = load_preset("full-settings", preset_name)
+    remove_stale_keys(settings)
+    return settings
+
+
+def _setting_options(world: "SMMapRandoWorld"):
+    for field_name in world.options_dataclass.type_hints:
+        option = getattr(world.options, field_name)
+        if isinstance(option, MapRandoSetting) or hasattr(option, "path"):
+            yield field_name, option
+
+
+def build_randomizer_settings(world: "SMMapRandoWorld") -> Dict[str, Any]:
+    settings = base_settings(world)
+    options = list(_setting_options(world))
+
+    # Category presets
+    for _, option in options:
+        preset_dir = getattr(option, "preset_dir", "")
+        if preset_dir:
+            name = option.setting_value()
+            if name is not None:
+                category = option.path.split(".")[0]
+                settings[category] = load_preset(preset_dir, name)
+
+    # Presets of groups of settings
+    for _, option in options:
+        path = option.path
+        if getattr(option, "preset_dir", ""):
+            continue
+        value = option.setting_value() if isinstance(option, MapRandoSetting) else None
+        if value is None:
+            continue
+        if path.endswith(".preset") and path[:-len(".preset")] in SUB_PRESETS:
+            group = path[:-len(".preset")]
+            expand, _ = SUB_PRESETS[group]
+            set_path(settings, group, expand(value))
+        elif path == "item_progression_settings.item_pool_preset":
+            _apply_item_pool_preset(settings["item_progression_settings"], value)
+        elif path == "item_progression_settings.starting_items_preset":
+            _apply_starting_items_preset(settings["item_progression_settings"], value)
+
+    # Individual settings
+    items = settings["item_progression_settings"]
+    skill = settings["skill_assumption_settings"]
+    for field_name, option in options:
+        path = option.path
+        if getattr(option, "preset_dir", "") or path.endswith("_preset") or path.endswith(".preset"):
+            continue
+        objective = getattr(option, "objective", None)
+        if objective is not None:
+            value = option.setting_value()
+            if value is not None:
+                entries = settings["objective_settings"]["objective_options"]
+                for e in entries:
+                    if e["objective"] == objective:
+                        e["setting"] = value
+                        break
+                else:
+                    entries.append({"objective": objective, "setting": value})
+            continue
+        if field_name in ("tech_enabled", "tech_disabled", "notables_enabled", "notables_disabled",
+                          "item_pool", "rando_starting_items", "key_item_priority", "filler_items"):
+            continue
+        if isinstance(option, MapRandoSetting):
+            value = option.setting_value()
+            if value is not None:
+                set_path(settings, path, value)
+
+    # Tech and notables
+    enabled = _expand_tiers(world.options.tech_enabled.value, tech_tiers())
+    disabled = _expand_tiers(world.options.tech_disabled.value, tech_tiers())
+    for t in skill["tech_settings"]:
+        if t["name"] in enabled:
+            t["enabled"] = True
+        if t["name"] in disabled:
+            t["enabled"] = False
+    enabled = _expand_tiers(world.options.notables_enabled.value, notable_tiers())
+    disabled = _expand_tiers(world.options.notables_disabled.value, notable_tiers())
+    for n in skill["notable_settings"]:
+        key = f"{n['room_name']}: {n['notable_name']}"
+        if key in enabled:
+            n["enabled"] = True
+        if key in disabled:
+            n["enabled"] = False
+
+    # Item lists
+    for option, list_key, default_unique in [(world.options.item_pool, "item_pool", 1),
+                                             (world.options.rando_starting_items, "starting_items", 0)]:
+        if option.value:
+            counts = item_counts(items[list_key], default_unique)
+            for item, count in option.value.items():
+                if item in UNIQUE_ITEMS and count > 1:
+                    raise OptionError(f"Super Metroid Map Rando: {option.__class__.__name__} for {item} must be "
+                                      f"0 or 1 (player {world.player_name})")
+                counts[item] = count
+            items[list_key] = [{"item": k, "count": v} for k, v in counts.items()]
+    for option, list_key in [(world.options.key_item_priority, "key_item_priority"),
+                             (world.options.filler_items, "filler_items")]:
+        if option.value:
+            priorities = item_priorities(items[list_key])
+            priorities.update(option.value)
+            items[list_key] = [{"item": k, "priority": v} for k, v in priorities.items()]
+
+    # Custom start location
+    start = settings["start_location_settings"]
+    if start["mode"] == "Custom":
+        name = world.options.custom_start_location.value.strip()
+        if name:
+            matches = [s for s in start_locations() if s["name"].casefold() == name.casefold()]
+            if not matches:
+                raise OptionError(f"Super Metroid Map Rando: unknown custom_start_location {name!r} for player "
+                                  f"{world.player_name}")
+            start["room_id"] = matches[0]["room_id"]
+            start["node_id"] = matches[0]["node_id"]
+        elif start.get("room_id") is None:
+            raise OptionError(f"Super Metroid Map Rando: start_location is 'custom' but no custom_start_location "
+                              f"is given (player {world.player_name})")
+    else:
+        start["room_id"] = None
+        start["node_id"] = None
+
+    settings["other_settings"]["random_seed"] = None
+    if world.multiworld.is_race:
+        settings["other_settings"]["race_mode"] = True
+
+    relabel_presets(settings)
+    return settings
+
+
+def relabel_presets(settings: Dict[str, Any]) -> None:
+    """Set each "preset" field to the name of the preset matching the settings, or None (custom)."""
+    for group, (expand, names) in SUB_PRESETS.items():
+        node = get_path(settings, group)
+        node["preset"] = next((n for n in names if same(node, expand(n))), None)
+
+    items = settings["item_progression_settings"]
+    for preset_field, apply, names in [("item_pool_preset", _apply_item_pool_preset, ["Full", "Reduced"]),
+                                       ("starting_items_preset", _apply_starting_items_preset, ["None", "All"])]:
+        keys = ["item_pool", "stop_item_placement_early", "missile_size", "super_size", "powerbomb_size",
+                "etank_size", "reserve_size"] if preset_field == "item_pool_preset" else ["starting_items"]
+        found = None
+        for n in names:
+            candidate = copy.deepcopy(items)
+            apply(candidate, n)
+            if all(same(items[k], candidate[k], k) for k in keys):
+                found = n
+                break
+        items[preset_field] = found
+
+    for category, (preset_dir, names) in CATEGORY_PRESETS.items():
+        node = settings[category]
+        node["preset"] = next((n for n in names if same(node, load_preset(preset_dir, n))), None)
+
+    settings["name"] = next((n for n in FULL_PRESETS if same(
+        {k: v for k, v in settings.items() if k not in ("version", "debug")},
+        {k: v for k, v in load_preset("full-settings", n).items() if k not in ("version", "debug")})), None)
+
+
+def build_customize_settings(world: "SMMapRandoWorld") -> Dict[str, Any]:
+    """Cosmetic settings, in the format of the website's Customize form."""
+    options = world.options
+    out: Dict[str, Any] = {}
+    for field_name in world.options_dataclass.type_hints:
+        option = getattr(options, field_name)
+        field = getattr(option, "field", None)
+        if field is None:
+            continue
+        json_values = getattr(option, "json_values", None)
+        if field.endswith("_buttons"):
+            out[field] = sorted(option.value)
+        elif field == "etank_color":
+            out[field] = str(option.current_key).lower()
+        elif json_values is not None:
+            out[field] = json_values[option.value]
+        else:
+            out[field] = bool(option.value)
+
+    theming = out.pop("room_theming", "tiling")
+    theming_palettes, theming_tiles = {"vanilla": ("vanilla", "none"), "palettes": ("area-themed", "none"),
+                                       "tiling": ("vanilla", "area_themed")}[theming]
+    if out.get("room_palettes") is None:
+        out["room_palettes"] = theming_palettes
+    if out.get("tile_theme") is None:
+        out["tile_theme"] = theming_tiles
+
+    color = out.get("etank_color", "")
+    if len(color) != 6 or any(c not in "0123456789abcdef" for c in color):
+        raise OptionError(f"Super Metroid Map Rando: invalid etank_color {color!r} (expected a hex RGB code such as "
+                          f"'de3894') for player {world.player_name}")
+    return out

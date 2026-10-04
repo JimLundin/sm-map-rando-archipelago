@@ -1,0 +1,8 @@
+[submodule "SMBasepatch"]
+	path = SMBasepatch
+	url = https://github.com/JimLundin/SMBasepatch.git
+	branch = maprando-v123
+[submodule "MapRandomizer"]
+	path = MapRandomizer
+	url = https://github.com/JimLundin/MapRandomizer.git
+	branch = ap-integration
