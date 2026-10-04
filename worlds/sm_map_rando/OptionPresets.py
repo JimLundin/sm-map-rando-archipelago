@@ -6,9 +6,8 @@ from typing import Any, Dict, List
 from Options import OptionGroup
 
 from .ap_options import (CommonDoorColors, CommonMap, DeathLink, ItemMatching, LocalEarlyProgression,
-                         MapRandoSettings, RemoteItems,
-                         SettingsPreset, UniqueStartLocations)
-from .Options import OPTION_GROUP_CLASSES
+                         MapRandoSettings, RemoteItems, UniqueStartLocations)
+from .Options import FULL_PRESET_OPTIONS, OPTION_GROUP_CLASSES, SettingsPreset
 
 OPTION_GROUPS: List[OptionGroup] = [
     OptionGroup("Archipelago", [DeathLink, RemoteItems, ItemMatching, CommonMap, CommonDoorColors,
@@ -18,9 +17,4 @@ OPTION_GROUPS: List[OptionGroup] = [
      for name, classes in OPTION_GROUP_CLASSES.items()]
 
 # The website's full settings presets.
-OPTIONS_PRESETS: Dict[str, Dict[str, Any]] = {
-    "Map Rando Default": {"settings_preset": "default"},
-    "Community Race Season 5": {"settings_preset": "community_race_season_5"},
-    "Mentor Tournament": {"settings_preset": "mentor_tournament"},
-    "Summer Series Expert Challenge": {"settings_preset": "summer_series_expert_challenge"},
-}
+OPTIONS_PRESETS: Dict[str, Dict[str, Any]] = dict(FULL_PRESET_OPTIONS)

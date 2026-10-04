@@ -1,0 +1,85 @@
+{
+ "full": [
+  "Default",
+  "Community Race Season 5",
+  "Mentor Tournament",
+  "Summer Series Expert Challenge"
+ ],
+ "items": [
+  "ETank",
+  "Missile",
+  "Super",
+  "PowerBomb",
+  "Bombs",
+  "Charge",
+  "Ice",
+  "HiJump",
+  "SpeedBooster",
+  "Wave",
+  "Spazer",
+  "SpringBall",
+  "Varia",
+  "Gravity",
+  "XRayScope",
+  "Plasma",
+  "Grapple",
+  "SpaceJump",
+  "ScrewAttack",
+  "Morph",
+  "ReserveTank",
+  "WallJump",
+  "Nothing",
+  "SparkBooster",
+  "BlueBooster"
+ ],
+ "categories": {
+  "skill": [
+   "Implicit",
+   "Basic",
+   "Medium",
+   "Hard",
+   "Very Hard",
+   "Expert",
+   "Expert+",
+   "Extreme",
+   "Extreme+",
+   "Insane",
+   "Insane+",
+   "Beyond"
+  ],
+  "item_progression": [
+   "Normal",
+   "Tricky",
+   "Technical",
+   "Challenge",
+   "Desolate"
+  ],
+  "quality_of_life": [
+   "Off",
+   "Low",
+   "Default",
+   "High",
+   "Max"
+  ],
+  "objectives": [
+   "None",
+   "Bosses",
+   "Minibosses",
+   "Chozos",
+   "Pirates",
+   "Metroids",
+   "Random"
+  ],
+  "doors": [
+   "Blue",
+   "Ammo",
+   "Beam"
+  ]
+ },
+ "map_layouts": [
+  "Vanilla",
+  "Small",
+  "Standard",
+  "Wild"
+ ]
+}

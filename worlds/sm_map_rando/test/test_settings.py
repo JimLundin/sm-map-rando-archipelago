@@ -217,3 +217,23 @@ class TestCustomize(unittest.TestCase):
         self.assertTrue(c["vanilla_screw_attack_animation"])
         self.assertEqual(c["control_shot"], "Y")
         self.assertTrue(c["moonwalk"])
+
+
+class TestUpstreamConsistency(unittest.TestCase):
+    """Checks that hand-written parts of the world agree with Map Rando's data (these fail when upstream changes)."""
+
+    def test_items_match_map_rando(self):
+        from ..Items import ITEM_DATA
+        self.assertEqual([d.rando_name for d in ITEM_DATA], settings_builder.PRESETS_INDEX["items"])
+
+    def test_sub_preset_rules_match_preset_files(self):
+        for group, presets in settings_builder.config_sub_presets().items():
+            rule = settings_builder.SUB_PRESETS[group][0]
+            for name, definition in presets.items():
+                with self.subTest(group=group, preset=name):
+                    self.assertEqual(canonical(rule(name)), canonical(definition))
+
+    def test_sub_preset_names_known(self):
+        for group, presets in settings_builder.config_sub_presets().items():
+            for name in presets:
+                self.assertIn(name, settings_builder.SUB_PRESETS[group][1], group)

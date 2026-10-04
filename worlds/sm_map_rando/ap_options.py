@@ -4,22 +4,6 @@ from __future__ import annotations
 from Options import Choice, DefaultOnToggle, OptionDict, Range, TextChoice, Toggle
 
 
-class SettingsPreset(Choice):
-    """
-    Map Rando settings preset, as on the maprando.com website ("Settings preset"). This is the base for all settings:
-    the category presets (skill assumptions, item progression, quality of life, objectives, doors) and individual
-    settings below are applied on top of it, wherever they are set to something other than 'preset'.
-    """
-    display_name = "Settings preset"
-    option_default = 0
-    option_community_race_season_5 = 1
-    option_mentor_tournament = 2
-    option_summer_series_expert_challenge = 3
-    default = 0
-    preset_names = {0: "Default", 1: "Community Race Season 5", 2: "Mentor Tournament",
-                    3: "Summer Series Expert Challenge"}
-
-
 class MapRandoSettings(OptionDict):
     """
     Complete Map Rando settings, as exported from the maprando.com website (the settings JSON from "Save settings" /

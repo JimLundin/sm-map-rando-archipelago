@@ -1,6 +1,6 @@
 {
  "source": {
-  "repo": "/home/jim/smmr/MapRandomizer/rust",
+  "repo": "MapRandomizer/rust",
   "settings_version": 123,
   "default_preset": "data/presets/full-settings/Default.json"
  },
@@ -9888,7 +9888,7 @@
    "path": "rom",
    "section": "Seed page > Customization",
    "label": "Input ROM (vanilla Super Metroid)",
-   "description": "Please provide an original Super Metroid ROM: NTSC, USA/JU version, unheadered.",
+   "description": "Please provide a vanilla Super Metroid ROM: NTSC, USA/JU version, unheadered.\nThe selected ROM is invalid. Please try again with a correct ROM.",
    "type": "other",
    "default": null,
    "notes": "File upload field 'rom' (Bytes). Must be the unheadered NTSC USA/JU Super Metroid ROM, SHA-256 12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72 (checked client-side and server-side). Not a setting per se; stored in browser localforage."

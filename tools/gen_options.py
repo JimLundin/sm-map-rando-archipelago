@@ -1,21 +1,54 @@
 """
-Generate worlds/sm_map_rando/Options.py from a specification of the Map Rando settings, using the labels and help
-texts of the maprando.com website (tools/settings_catalog.json, extracted from the website templates).
+Generate worlds/sm_map_rando/Options.py (and data/presets_index.json) for the Map Rando settings.
+
+The settings themselves come from Map Rando: the structure and enum values from settings.rs, the presets as loaded by
+Map Rando (see upstream_data.py). The specification below only adds what Map Rando doesn't define: stable option
+names, numeric ranges and grouping. Labels and help texts come from the website templates (settings_catalog.json),
+where available. Settings added upstream that aren't in the specification get options automatically (with a
+warning, so that they can be given a proper name and range).
 
 Usage: python tools/gen_options.py
 """
 import json
 import os
 import re
+import sys
 import textwrap
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import rust_schema  # noqa: E402
+import upstream_data  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CATALOG = json.load(open(os.path.join(ROOT, "tools", "settings_catalog.json")))
+CATALOG = upstream_data.catalog()
 GAME_DATA = os.path.join(ROOT, "worlds", "sm_map_rando", "data", "maprando")
 OUT = os.path.join(ROOT, "worlds", "sm_map_rando", "Options.py")
+PRESETS_INDEX = os.path.join(ROOT, "worlds", "sm_map_rando", "data", "presets_index.json")
+SCHEMA = upstream_data.schema()
+_, RUST_ENUMS = rust_schema.parse()
+WARNINGS = []
 
-RS = {e["path"]: e for e in CATALOG["randomizer_settings"]}
+
+class CatalogEntries(dict):
+    """Website labels/help texts by setting path, with a fallback for settings missing from the catalog."""
+
+    def __missing__(self, path):
+        label = path.split(".")[-1].replace("_", " ").capitalize()
+        WARNINGS.append(f"no website label/help text for {path}")
+        return {"path": path, "label": label, "description": "", "choices": None}
+
+
+RS = CatalogEntries({e["path"]: e for e in CATALOG["randomizer_settings"]})
 CS = {e["path"]: e for e in CATALOG["customize_settings"]}
+
+# Settings that are set by the world itself rather than by options
+NOT_OPTIONS = {"version", "name", "debug", "other_settings.random_seed", "start_location_settings.room_id",
+               "start_location_settings.node_id"}
+PRESET_CATEGORIES = {"skill-assumptions": "skill", "item-progression": "item_progression",
+                     "quality-of-life": "quality_of_life", "objectives": "objectives", "doors": "doors"}
+LIST_ENUMS = {"objective_settings.objective_options": "ObjectiveSetting",
+              "item_progression_settings.key_item_priority": "KeyItemPriority",
+              "item_progression_settings.filler_items": "FillerItemPriority"}
 
 
 def class_name(option_name):
@@ -280,7 +313,27 @@ BUTTONS = ["Left", "Right", "Up", "Down", "X", "Y", "A", "B", "L", "R", "Select"
 # ---------------------------------------------------------------------------------------------------------------------
 
 def choices_of(entry):
-    return [c for c in entry.get("choices") or [] if c["value"] is not None]
+    """Choices of a setting: the values defined by Map Rando, in the website's order (and only those offered by the
+    website, when the website lists them)."""
+    path = entry["path"]
+    if path == "map_layout":
+        rust_values = upstream_data.map_layouts()
+    elif path in LIST_ENUMS:
+        rust_values = RUST_ENUMS[LIST_ENUMS[path]]
+    elif path in SCHEMA and SCHEMA[path][0] == "enum":
+        rust_values = SCHEMA[path][1]
+    else:
+        return [c for c in entry.get("choices") or [] if c["value"] is not None]
+    website = [c for c in entry.get("choices") or [] if c["value"] is not None]
+    unknown = [c["value"] for c in website if c["value"] not in rust_values]
+    if unknown:
+        raise SystemExit(f"Website choices {unknown} for {path} are not Map Rando values {rust_values}")
+    if not website:
+        return [{"value": v, "label": v} for v in rust_values]
+    hidden = [v for v in rust_values if v not in [c["value"] for c in website]]
+    if hidden:
+        WARNINGS.append(f"{path}: values {hidden} are not offered on the website (not exposed)")
+    return website
 
 
 def gen_category(spec):
@@ -297,7 +350,7 @@ def gen_category(spec):
     lines.append(f'    path = "{spec["path"]}"\n')
     lines.append(f'    preset_dir = "{spec.get("preset_dir", "")}"\n')
     json_values = {}
-    for i, v in enumerate(spec["values"], start=1):
+    for i, v in enumerate(upstream_data.preset_names(PRESET_CATEGORIES[spec["preset_dir"]]), start=1):
         k = key_for(v)
         lines.append(f"    option_{k} = {i}\n")
         json_values[i] = v
@@ -340,7 +393,8 @@ def gen_setting(spec):
         lines = [f"class {cn}({base}):\n", docstring(label, e["description"], extra),
                  f'    display_name = "{label}"\n', f'    path = "{path}"\n']
         jv = {}
-        for i, v in enumerate(spec["values"], start=1):
+        values = [c["value"] for c in choices_of(e)] if SCHEMA[path][0] == "enum" else spec["values"]
+        for i, v in enumerate(values, start=1):
             lines.append(f"    option_{key_for(v)} = {i}\n")
             jv[i] = v
         lines.append(f"    json_values = {jv!r}\n")
@@ -518,7 +572,7 @@ from Options import Choice, DefaultOnToggle, FreeText, OptionCounter, OptionSet,
     StartInventoryPool, TextChoice, Toggle
 
 from .ap_options import CommonDoorColors, CommonMap, DeathLink, ItemMatching, LocalEarlyProgression, \\
-    MapRandoSettings, RemoteItems, SettingsPreset, UniqueStartLocations
+    MapRandoSettings, RemoteItems, UniqueStartLocations
 from .option_types import ChoiceMapping, PresetChoice, PresetFloat, PresetRange, PresetToggle
 
 # Map Rando item names (as used in Map Rando's settings), accepted by the item settings options
@@ -527,8 +581,58 @@ ITEM_SETTING_KEYS = {item_keys!r}
 '''
 
 
+def upstream_items():
+    """Map Rando's items (the Item enum of maprando-game), in order."""
+    src = open(os.path.join(ROOT, "MapRandomizer", "rust", "maprando-game", "src", "lib.rs"), encoding="utf-8").read()
+    for name, body in rust_schema._blocks(rust_schema._strip_comments(src), "enum"):
+        if name == "Item":
+            return re.findall(r"(\w+)\s*,", body)
+    raise SystemExit("Item enum not found")
+
+
+def check_coverage():
+    """Every Map Rando setting must have an option: settings added upstream get one automatically."""
+    covered = {spec["path"] for spec in SPEC} | NOT_OPTIONS
+    for spec in SPEC:
+        if spec["path"] not in SCHEMA:
+            raise SystemExit(f"Option {spec['name']}: setting {spec['path']} no longer exists in Map Rando's settings.rs")
+    for path, (kind, detail) in SCHEMA.items():
+        if path in covered:
+            continue
+        name = "_".join(path.split(".")[-2:]) if path.count(".") >= 2 else path.split(".")[-1]
+        auto = {"group": "Other Map Rando Settings", "name": name, "path": path}
+        if kind == "bool":
+            auto["kind"] = "toggle"
+        elif kind == "enum":
+            auto["kind"] = "choice"
+        elif kind == "int":
+            auto.update(kind="int", min=0, max=1000)
+        elif kind == "float":
+            auto.update(kind="float", min=0, max=1000)
+        else:
+            raise SystemExit(f"New Map Rando setting {path} ({kind} {detail}) needs to be added to gen_options.py")
+        WARNINGS.append(f"new Map Rando setting {path}: added option {name} automatically (review its name/range)")
+        SPEC.append(auto)
+
+
+def gen_settings_preset():
+    names = upstream_data.preset_names("full")
+    lines = ["class SettingsPreset(Choice):\n",
+             docstring("Settings preset", RS["name"]["description"],
+                       "The settings preset is the base for all settings: the category presets and individual settings "
+                       "below are applied on top of it, wherever they are set to something other than 'preset'."),
+             '    display_name = "Settings preset"\n']
+    for i, n in enumerate(names):
+        lines.append(f"    option_{key_for(n)} = {i}\n")
+    lines.append("    default = 0\n")
+    lines.append(f"    preset_names = {dict(enumerate(names))!r}\n")
+    return "".join(lines), names
+
+
 def main():
-    classes = []
+    check_coverage()
+    settings_preset_code, full_names = gen_settings_preset()
+    classes = [settings_preset_code]
     fields = []
     groups = {}
     for spec in SPEC:
@@ -548,9 +652,7 @@ def main():
         fields.append((spec["name"], cn))
         groups.setdefault(spec["group"], []).append(cn)
 
-    item_keys = ["ETank", "Missile", "Super", "PowerBomb", "Bombs", "Charge", "Ice", "HiJump", "SpeedBooster",
-                 "Wave", "Spazer", "SpringBall", "Varia", "Gravity", "XRayScope", "Plasma", "Grapple", "SpaceJump",
-                 "ScrewAttack", "Morph", "ReserveTank", "WallJump", "SparkBooster", "BlueBooster"]
+    item_keys = [i for i in upstream_items() if i != "Nothing"]
     out = [HEADER.format(item_keys=item_keys)]
     for code in classes:
         out.append("\n" + code + "\n")
@@ -567,6 +669,18 @@ def main():
     for g, cns in groups.items():
         out.append(f"    {g!r}: [{', '.join(cns)}],\n")
     out.append("}\n")
+    out.append("\n# The website's full settings presets, for the Archipelago website's options presets\n")
+    out.append("FULL_PRESET_OPTIONS = {\n")
+    for n in full_names:
+        out.append(f"    {n!r}: {{'settings_preset': {key_for(n)!r}}},\n")
+    out.append("}\n")
+    index = {"full": full_names, "items": upstream_items(),
+             "categories": {key: upstream_data.preset_names(key) for key in PRESET_CATEGORIES.values()},
+             "map_layouts": upstream_data.map_layouts()}
+    with open(PRESETS_INDEX, "w") as f:
+        json.dump(index, f, indent=1)
+    for w in WARNINGS:
+        print("warning:", w)
     with open(OUT, "w") as f:
         f.write("".join(out))
     print(f"Wrote {OUT}: {len(fields)} Map Rando options")

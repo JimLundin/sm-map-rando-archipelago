@@ -28,7 +28,7 @@ import Utils
 
 logger = logging.getLogger("Super Metroid Map Rando")
 
-PYSMMAPRANDO_VERSION = "0.123.0"
+from .version import WORLD_VERSION as PYSMMAPRANDO_VERSION  # the native module has the world's version
 GAME_DATA_DIR = "maprando"  # directory within the world's data directory
 UPSTREAM_COMMIT_FILE = "upstream_commit.txt"
 

@@ -1,0 +1,119 @@
+diff --git a/rust/maprando/src/customize/retiling.rs b/rust/maprando/src/customize/retiling.rs
+index f0ff85d..30f3cb4 100644
+--- a/rust/maprando/src/customize/retiling.rs
++++ b/rust/maprando/src/customize/retiling.rs
+@@ -15,7 +15,7 @@ use super::TileTheme;
+ const BPS_PATCH_PATH: &str = "../patches/mosaic";
+ 
+ fn apply_bps_patch(rom: &mut Rom, orig_rom: &Rom, filename: &str) -> Result<()> {
+-    let path = Path::new(BPS_PATCH_PATH).join(filename);
++    let path = crate::paths::resolve_data_path(&Path::new(BPS_PATCH_PATH).join(filename));
+     let patch_bytes = std::fs::read(path).with_context(|| format!("Loading {filename}"))?;
+     let patch = BPSPatch::new(patch_bytes)?;
+     patch.apply(&orig_rom.data, &mut rom.data);
+diff --git a/rust/maprando/src/lib.rs b/rust/maprando/src/lib.rs
+index 64d7e0c..67a3e86 100644
+--- a/rust/maprando/src/lib.rs
++++ b/rust/maprando/src/lib.rs
+@@ -8,6 +8,7 @@ pub mod difficulty;
+ pub mod helpers;
+ pub mod map_repository;
+ pub mod patch;
++pub mod paths;
+ pub mod preset;
+ pub mod randomize;
+ pub mod seed_repository;
+diff --git a/rust/maprando/src/patch.rs b/rust/maprando/src/patch.rs
+index 2f2b932..e404556 100644
+--- a/rust/maprando/src/patch.rs
++++ b/rust/maprando/src/patch.rs
+@@ -258,11 +258,32 @@ pub fn xy_to_explored_bit_ptr(x: isize, y: isize) -> (isize, u8) {
+     (offset_byte_part, offset_bitmask)
+ }
+ 
++// Optional replacement item PLM types (visible, chozo orb, shot block), used for all items except Nothing.
++// This allows external patches to provide their own item PLMs (e.g. the Archipelago multiworld item PLMs).
++static ITEM_PLM_OVERRIDE: std::sync::RwLock<Option<[isize; 3]>> = std::sync::RwLock::new(None);
++
++pub fn set_item_plm_override(plm_types: Option<[isize; 3]>) {
++    *ITEM_PLM_OVERRIDE.write().unwrap() = plm_types;
++}
++
++fn item_plm_override() -> Option<[isize; 3]> {
++    *ITEM_PLM_OVERRIDE.read().unwrap()
++}
++
++fn is_item_plm_type(plm_type: isize) -> bool {
++    (0xEED7..=0xF100).contains(&plm_type) || item_plm_override().is_some_and(|o| o.contains(&plm_type))
++}
++
+ fn item_to_plm_type(item: Item, orig_plm_type: isize) -> isize {
+     let item_id = item as isize;
+ 
+     // Item container: 0 = none, 1 = chozo orb, 2 = shot block (scenery)
+     let item_container = (orig_plm_type - 0xEED7) / 84;
++    if let Some(override_types) = item_plm_override()
++        && item != Item::Nothing
++    {
++        return override_types[item_container as usize];
++    }
+ 
+     let plm_table: [[isize; 25]; 3] = [
+         [
+@@ -405,7 +426,7 @@ pub fn get_room_state_ptrs(rom: &Rom, room_ptr: usize) -> Result<Vec<(usize, usi
+ }
+ 
+ pub fn apply_ips_patch(rom: &mut Rom, patch_path: &Path) -> Result<()> {
+-    let patch_data = std::fs::read(patch_path)
++    let patch_data = std::fs::read(crate::paths::resolve_data_path(patch_path))
+         .with_context(|| format!("Unable to read patch {}", patch_path.display()))?;
+     let patch = ips::Patch::parse(&patch_data)
+         .with_context(|| format!("Unable to parse patch {}", patch_path.display()))?;
+@@ -3075,7 +3096,7 @@ impl Patcher<'_> {
+                 if plm_type == 0x0000 {
+                     break;
+                 }
+-                if (0xEED7..=0xF100).contains(&plm_type) {
++                if is_item_plm_type(plm_type) {
+                     // item PLM
+                     let mut plm_x = self.rom.read_u8(intersection_plm_ptr + 2)?;
+                     let mut plm_y = self.rom.read_u8(intersection_plm_ptr + 3)?;
+diff --git a/rust/maprando/src/patch/title.rs b/rust/maprando/src/patch/title.rs
+index 6a275b7..1d0b968 100644
+--- a/rust/maprando/src/patch/title.rs
++++ b/rust/maprando/src/patch/title.rs
+@@ -344,8 +344,8 @@ impl<'a> TitlePatcher<'a> {
+ 
+         // Now we will patch the tiles & spritemap by adding "Map Rando" to the same sprite.
+         // First load the image:
+-        let image_path = Path::new("../gfx/title/maprando.png");
+-        let img = read_image(image_path)?;
++        let image_path = crate::paths::resolve_data_path(Path::new("../gfx/title/maprando.png"));
++        let img = read_image(&image_path)?;
+         assert!(img.dim() == (224, 256, 3));
+ 
+         // We don't modify the palette, just reuse colors from the existing palette.
+diff --git a/rust/maprando/src/paths.rs b/rust/maprando/src/paths.rs
+new file mode 100644
+index 0000000..64db45f
+--- /dev/null
++++ b/rust/maprando/src/paths.rs
+@@ -0,0 +1,18 @@
++use std::path::{Path, PathBuf};
++use std::sync::OnceLock;
++
++static DATA_ROOT: OnceLock<PathBuf> = OnceLock::new();
++
++/// Set the directory against which relative data paths (e.g. "../patches/ips/foo.ips") are
++/// resolved. By default they are resolved against the current working directory, which is
++/// expected to be the `rust` directory of the repository.
++pub fn set_data_root(root: &Path) -> bool {
++    DATA_ROOT.set(root.to_owned()).is_ok()
++}
++
++pub fn resolve_data_path(path: &Path) -> PathBuf {
++    match DATA_ROOT.get() {
++        Some(root) if path.is_relative() => root.join(path),
++        _ => path.to_owned(),
++    }
++}

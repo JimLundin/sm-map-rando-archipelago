@@ -12,11 +12,38 @@ from Options import Choice, DefaultOnToggle, FreeText, OptionCounter, OptionSet,
     StartInventoryPool, TextChoice, Toggle
 
 from .ap_options import CommonDoorColors, CommonMap, DeathLink, ItemMatching, LocalEarlyProgression, \
-    MapRandoSettings, RemoteItems, SettingsPreset, UniqueStartLocations
+    MapRandoSettings, RemoteItems, UniqueStartLocations
 from .option_types import ChoiceMapping, PresetChoice, PresetFloat, PresetRange, PresetToggle
 
 # Map Rando item names (as used in Map Rando's settings), accepted by the item settings options
 ITEM_SETTING_KEYS = ['ETank', 'Missile', 'Super', 'PowerBomb', 'Bombs', 'Charge', 'Ice', 'HiJump', 'SpeedBooster', 'Wave', 'Spazer', 'SpringBall', 'Varia', 'Gravity', 'XRayScope', 'Plasma', 'Grapple', 'SpaceJump', 'ScrewAttack', 'Morph', 'ReserveTank', 'WallJump', 'SparkBooster', 'BlueBooster']
+
+
+class SettingsPreset(Choice):
+    """
+    Settings preset.
+
+    Selecting a preset will replace all randomizer settings to make them follow the selected preset, which can
+    either be a randomizer built-in preset or a custom one. If you have made unsaved changes to your randomizer
+    settings, be sure to save them before selecting a preset, in order to avoid losing them.
+    Built-in randomizer presets currently include the following:
+    - Default: the default settings for the randomizer, including Basic skill assumptions and Normal item
+        progression. This is highly recommended for first-time players.
+    - Community Racing Season 3: the settings currently used in community races, including Hard skill assumptions,
+        Tricky item progression with 2 additional Super packs, and "Save the animals" required.
+    To create a new custom preset, use the "Save Settings" button at the bottom of the page. To manage existing
+    custom presets, click the gear button to the right of the preset selection.
+
+    The settings preset is the base for all settings: the category presets and individual settings below are
+    applied on top of it, wherever they are set to something other than 'preset'.
+    """
+    display_name = "Settings preset"
+    option_default = 0
+    option_community_race_season_5 = 1
+    option_mentor_tournament = 2
+    option_summer_series_expert_challenge = 3
+    default = 0
+    preset_names = {0: 'Default', 1: 'Community Race Season 5', 2: 'Mentor Tournament', 3: 'Summer Series Expert Challenge'}
 
 
 class SkillAssumptionsPreset(PresetChoice):
@@ -65,19 +92,19 @@ class SkillAssumptionsPreset(PresetChoice):
     display_name = "Skill assumptions"
     path = "skill_assumption_settings.preset"
     preset_dir = "skill-assumptions"
-    option_basic = 1
-    option_medium = 2
-    option_hard = 3
-    option_very_hard = 4
-    option_expert = 5
-    option_expert_plus = 6
-    option_extreme = 7
-    option_extreme_plus = 8
-    option_insane = 9
-    option_insane_plus = 10
-    option_implicit = 11
+    option_implicit = 1
+    option_basic = 2
+    option_medium = 3
+    option_hard = 4
+    option_very_hard = 5
+    option_expert = 6
+    option_expert_plus = 7
+    option_extreme = 8
+    option_extreme_plus = 9
+    option_insane = 10
+    option_insane_plus = 11
     option_beyond = 12
-    json_values = {1: 'Basic', 2: 'Medium', 3: 'Hard', 4: 'Very Hard', 5: 'Expert', 6: 'Expert+', 7: 'Extreme', 8: 'Extreme+', 9: 'Insane', 10: 'Insane+', 11: 'Implicit', 12: 'Beyond'}
+    json_values = {1: 'Implicit', 2: 'Basic', 3: 'Medium', 4: 'Hard', 5: 'Very Hard', 6: 'Expert', 7: 'Expert+', 8: 'Extreme', 9: 'Extreme+', 10: 'Insane', 11: 'Insane+', 12: 'Beyond'}
 
 
 class ItemProgressionPreset(PresetChoice):
@@ -5004,4 +5031,12 @@ OPTION_GROUP_CLASSES = {
     'Game Variations': [SaveAnimals, WallJump, SpeedBooster, EnergyFreeShinesparks, AllEnemiesRespawn, DisableSpikesuit, DisableBluesuit, EnableMajorGlitches, Savestate, RaceMode],
     'Cosmetics': [SamusSprite, EtankColor, RoomTheming, RoomPalettes, TileTheme, DoorTheme, Music, Shaking, Flashing, DisableBeeping, ReserveHudStyle, ScrewAttackAnimation, RoomNames, MapTheme, ItemDotChange, TransitionLetters, BossIcons, MinibossIcons, SaveIcons, StatuesHallwayTiling, StatuesHallwayAudio],
     'Controller': [ControlShot, ControlJump, ControlDash, ControlItemSelect, ControlItemCancel, ControlAngleUp, ControlAngleDown, SpinLockButtons, QuickReloadButtons, SaveStateButtons, LoadStateButtons, Moonwalk],
+}
+
+# The website's full settings presets, for the Archipelago website's options presets
+FULL_PRESET_OPTIONS = {
+    'Default': {'settings_preset': 'default'},
+    'Community Race Season 5': {'settings_preset': 'community_race_season_5'},
+    'Mentor Tournament': {'settings_preset': 'mentor_tournament'},
+    'Summer Series Expert Challenge': {'settings_preset': 'summer_series_expert_challenge'},
 }

@@ -1,8 +1,18 @@
 """
-Assemble the Super Metroid Map Rando world: copy the Map Rando game data, the AP basepatch and the native wheels
-into worlds/sm_map_rando, generate the static location/item tables, and zip everything into an .apworld.
+Build the Super Metroid Map Rando world from the MapRandomizer submodule and this repository:
+  1. prepare the submodule (patches, version files)       tools/prepare_upstream.py
+  2. copy the Map Rando game data into the world
+  3. extract the website labels/help texts                 tools/catalog/build_catalog.py
+  4. generate the options                                  tools/gen_options.py
+  5. check upstream code mirrored by hand                  tools/upstream_checks.py
+  6. assemble the AP basepatch                             tools/build_basepatch.py
+  7. generate the location tables
+  8. copy the native wheels (dist/wheels) and zip the .apworld (dist/sm_map_rando.apworld)
 
-Usage: python tools/build_apworld.py [--skip-data] [--no-zip]
+The native module (pysmmaprando) for the current platform must be installed (see native/pysmmaprando), since steps 4
+and 7 use Map Rando itself to read its presets and item locations.
+
+Usage: python tools/build_apworld.py [--skip-data] [--no-zip] [--allow-upstream-changes]
 """
 import argparse
 import glob
@@ -15,7 +25,6 @@ import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MR = os.path.join(ROOT, "MapRandomizer")
-BASEPATCH = os.path.join(ROOT, "SMBasepatch", "build", "romhacks", "maprando")
 WORLD = os.path.join(ROOT, "worlds", "sm_map_rando")
 DATA = os.path.join(WORLD, "data")
 GAME_DATA = os.path.join(DATA, "maprando")
@@ -58,20 +67,15 @@ def build_game_data():
     shutil.copy2(os.path.join(MR, "MapRandoSprites", "samus_sprites", "manifest.json"),
                  os.path.join(GAME_DATA, "MapRandoSprites", "samus_sprites"))
 
+    # the upstream commit, used to download Samus sprites from the MapRandomizer repository
     commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=MR, text=True).strip()
-    upstream = subprocess.check_output(["git", "merge-base", "HEAD", "origin/main"], cwd=MR, text=True).strip() \
-        if subprocess.call(["git", "rev-parse", "--verify", "-q", "origin/main"], cwd=MR,
-                           stdout=subprocess.DEVNULL) == 0 else commit
     with open(os.path.join(DATA, "upstream_commit.txt"), "w") as f:
-        f.write(upstream + "\n")
+        f.write(commit + "\n")
     shutil.copy2(os.path.join(MR, "MOSAIC_BUILD_ID"), os.path.join(DATA, "MOSAIC_BUILD_ID"))
 
 
-def build_basepatch():
-    dst = os.path.join(DATA, "SMBasepatch_prebuilt")
-    os.makedirs(dst, exist_ok=True)
-    for f in ["multiworld-basepatch.ips", "sm-basepatch-symbols.json"]:
-        shutil.copy2(os.path.join(BASEPATCH, f), dst)
+def run_tool(*args):
+    subprocess.check_call([sys.executable, *args], cwd=ROOT)
 
 
 def build_tables():
@@ -147,10 +151,19 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--skip-data", action="store_true")
     parser.add_argument("--no-zip", action="store_true")
+    parser.add_argument("--allow-upstream-changes", action="store_true",
+                        help="don't fail if upstream code mirrored by this repository changed")
     args = parser.parse_args()
+    run_tool("tools/prepare_upstream.py")
     if not args.skip_data:
         build_game_data()
-    build_basepatch()
+    run_tool("tools/catalog/build_catalog.py")
+    run_tool("tools/gen_options.py")
+    if subprocess.call([sys.executable, "tools/upstream_checks.py"], cwd=ROOT) != 0 and \
+            not args.allow_upstream_changes:
+        raise SystemExit("Upstream code mirrored by this repository changed: review it (see above), then run "
+                         "tools/upstream_checks.py --update")
+    run_tool("tools/build_basepatch.py")
     build_tables()
     copy_wheels()
     if not args.no_zip:

@@ -117,15 +117,5 @@
     "sm_item_plm_pickup_sequence_pointers": "80:EB35",
     "sm_save_done_hook": "80:E87B",
     "write_repeated_memory": "80:E7EF",
-    "write_repeated_memory_loop": "80:E7F4",
-    "deathhook82": "82:DDC7",
-    "freespace82_start": "82:FD00",
-    "freespace82_end": "82:FDBA",
-    "freespacea0": "a0:fe00",
-    "SRAM_SAVING": "70:2604",
-    "current_save_slot": "7e:0952",
-    "ITEM_RAM": "7E:09A2",
-    "ReceiveQueueCompletedCount_InRamThatGetsSavedToSaveSlot": "7e:d8ae",
-    "varia_seedint_location": "df:ff00",
-    "CollectedItems": "7E:D86E"
+    "write_repeated_memory_loop": "80:E7F4"
 }
