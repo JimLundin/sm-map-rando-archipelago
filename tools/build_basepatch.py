@@ -38,8 +38,8 @@ def find_asar() -> str:
     subprocess.check_call(["cmake", src, "-DCMAKE_BUILD_TYPE=Release"], cwd=build, stdout=subprocess.DEVNULL)
     subprocess.check_call(["cmake", "--build", ".", "--config", "Release", "--parallel"], cwd=build,
                           stdout=subprocess.DEVNULL)
-    built = [p for p in glob.glob(os.path.join(build, "**", "asar*"), recursive=True)
-             if os.path.isfile(p) and os.access(p, os.X_OK) and not p.endswith((".a", ".so", ".dll", ".lib"))]
+    exe = "asar.exe" if os.name == "nt" else "asar"
+    built = [p for p in glob.glob(os.path.join(build, "asar", "bin", "**", exe), recursive=True) if os.path.isfile(p)]
     if not built:
         raise SystemExit("asar build failed")
     os.makedirs(os.path.dirname(ASAR_BIN), exist_ok=True)
@@ -57,8 +57,10 @@ def main():
         sym = os.path.join(OUT, "multiworld.sym")
         subprocess.check_call([sys.executable, os.path.join(resources, "create_dummies.py"), *roms])
         for rom in roms:
-            subprocess.check_call([asar, "--no-title-check", "--symbols=wla", f"--symbols-path={sym}", "main.asm",
-                                   rom], cwd=src_dir, stdout=subprocess.DEVNULL)
+            result = subprocess.run([asar, "--no-title-check", "--symbols=wla", f"--symbols-path={sym}", "main.asm",
+                                     rom], cwd=src_dir, capture_output=True, text=True)
+            if result.returncode != 0 or not os.path.exists(sym):
+                raise SystemExit(f"Assembling the basepatch failed:\n{result.stdout}\n{result.stderr}")
         subprocess.check_call([sys.executable, os.path.join(resources, "create_ips.py"), *roms,
                                os.path.join(OUT, "multiworld-basepatch.ips")])
     with open(os.path.join(OUT, "sm-basepatch-symbols.json"), "w") as f:
