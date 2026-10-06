@@ -1693,7 +1693,7 @@ dependencies = [
 
 [[package]]
 name = "pysmmaprando"
-version = "0.123.0"
+version = "0.123.2"
 dependencies = [
  "anyhow",
  "env_logger",
