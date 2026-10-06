@@ -109,13 +109,15 @@ def download(url: str, dest: str) -> None:
 
 
 def _wheel_platform_tags() -> list:
+    """Suffixes of the wheel platform tags usable on this platform, in order of preference."""
     machine = platform.machine().lower()
     if sys.platform.startswith("win"):
-        return ["win_amd64"] if machine in ("amd64", "x86_64") else ["win_arm64"]
+        return [("win", "_amd64")] if machine in ("amd64", "x86_64") else [("win", "_arm64")]
     if sys.platform.startswith("linux"):
-        return ["x86_64"] if machine in ("x86_64", "amd64") else ["aarch64"]
+        arch = "_x86_64" if machine in ("x86_64", "amd64") else "_aarch64"
+        return [("manylinux", arch), ("musllinux", arch), ("linux", arch)]
     if sys.platform == "darwin":
-        return ["universal2", "arm64" if machine == "arm64" else "x86_64"]
+        return [("macosx", "_universal2"), ("macosx", "_arm64" if machine == "arm64" else "_x86_64")]
     return []
 
 
@@ -128,9 +130,12 @@ def _find_bundled_wheel() -> Optional[str]:
     else:
         with zipfile.ZipFile(ap) as zf:
             names = [n.split("/")[-1] for n in zf.namelist() if n.endswith(".whl") and "/lib/" in n]
-    for tag in tags:
+    names = [n for n in names if n.startswith(f"pysmmaprando-{PYSMMAPRANDO_VERSION}-")]
+    for prefix, suffix in tags:
         for name in names:
-            if f"pysmmaprando-{PYSMMAPRANDO_VERSION}-" in name and tag in name:
+            # the platform tag is the last field of the file name, possibly several tags joined by "."
+            platform_tags = name[:-len(".whl")].split("-")[-1].split(".")
+            if any(t.startswith(prefix) and t.endswith(suffix) for t in platform_tags):
                 return name
     return None
 
@@ -172,7 +177,8 @@ def get_module():
                 raise ImportError(f"pysmmaprando {getattr(pysmmaprando, 'VERSION', '?')} found, "
                                   f"{PYSMMAPRANDO_VERSION} required")
         except ImportError as e:
-            sys.modules.pop("pysmmaprando", None)
+            for name in [m for m in sys.modules if m == "pysmmaprando" or m.startswith("pysmmaprando.")]:
+                del sys.modules[name]
             if not _install_bundled_wheel():
                 raise RuntimeError(
                     f"Super Metroid Map Rando requires the native module pysmmaprando {PYSMMAPRANDO_VERSION}, "
