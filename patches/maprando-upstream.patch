@@ -1,3 +1,42 @@
+diff --git a/rust/maprando/Cargo.toml b/rust/maprando/Cargo.toml
+index 0390e37..2e18e0b 100644
+--- a/rust/maprando/Cargo.toml
++++ b/rust/maprando/Cargo.toml
+@@ -3,6 +3,20 @@ name = "maprando"
+ version = "0.1.0"
+ edition = "2024"
+ 
++# The seed repository (cloud storage, used by the website) and the binaries' hashing pull in large dependency trees
++# (object_store's HTTP/TLS stack, OpenSSL) that the library itself doesn't need.
++[features]
++default = ["seed-repository", "crypto-hash"]
++seed-repository = ["dep:object_store", "dep:futures"]
++
++[[bin]]
++name = "build-mosaic"
++required-features = ["crypto-hash"]
++
++[[bin]]
++name = "maprando-test"
++required-features = ["crypto-hash"]
++
+ [dependencies]
+ maprando-game = { path = "../maprando-game" }
+ maprando-logic = { path = "../maprando-logic" }
+@@ -28,10 +42,10 @@ slice-of-array = "0.3.2"
+ pathfinding = "4.2.1"
+ env_logger = "0.10.0"
+ log = "0.4.17"
+-object_store = { version = "0.10.2", features=["aws", "gcp"] }
+-futures = "0.3.25"
++object_store = { version = "0.10.2", features=["aws", "gcp"], optional = true }
++futures = { version = "0.3.25", optional = true }
+ zstd = "0.12.2"
+-crypto-hash = "0.3.4"
++crypto-hash = { version = "0.3.4", optional = true }
+ serde-xml-rs = "0.6.0"
+ crc32fast = "1.3.2"
+ apache-avro = "0.19.0"
 diff --git a/rust/maprando/src/customize/retiling.rs b/rust/maprando/src/customize/retiling.rs
 index f0ff85d..30f3cb4 100644
 --- a/rust/maprando/src/customize/retiling.rs
@@ -12,17 +51,20 @@ index f0ff85d..30f3cb4 100644
      let patch = BPSPatch::new(patch_bytes)?;
      patch.apply(&orig_rom.data, &mut rom.data);
 diff --git a/rust/maprando/src/lib.rs b/rust/maprando/src/lib.rs
-index 64d7e0c..67a3e86 100644
+index 64d7e0c..3ef9251 100644
 --- a/rust/maprando/src/lib.rs
 +++ b/rust/maprando/src/lib.rs
-@@ -8,6 +8,7 @@ pub mod difficulty;
+@@ -8,8 +8,10 @@ pub mod difficulty;
  pub mod helpers;
  pub mod map_repository;
  pub mod patch;
 +pub mod paths;
  pub mod preset;
  pub mod randomize;
++#[cfg(feature = "seed-repository")]
  pub mod seed_repository;
+ pub mod settings;
+ pub mod spoiler_log;
 diff --git a/rust/maprando/src/patch.rs b/rust/maprando/src/patch.rs
 index 2f2b932..e404556 100644
 --- a/rust/maprando/src/patch.rs

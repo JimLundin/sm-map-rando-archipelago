@@ -36,10 +36,6 @@ jobs:
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.manylinux || 'auto' }}
           args: --release --strip --out ../../dist/wheels
-          # vendored OpenSSL needs perl modules missing from the manylinux images
-          before-script-linux: |
-            (yum install -y perl-IPC-Cmd perl-core || dnf install -y perl-IPC-Cmd perl-core || \
-             (apt-get update && apt-get install -y perl)) || true
       - uses: actions/upload-artifact@v7
         with:
           name: wheel-${{ matrix.name }}
