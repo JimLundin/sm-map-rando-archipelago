@@ -1,10 +1,14 @@
 # Super Metroid Map Rando for Archipelago
 
-An Archipelago world (`sm_map_rando.apworld`) for [Super Metroid Map Rando](https://maprando.com), based on Map Rando
-v123, exposing all the settings and presets of the maprando.com website as Archipelago options.
+> **Credit and scope**: this project is built on [lordlou's Map Rando Archipelago world](https://github.com/MultiworldGG/MultiworldGG/tree/main/worlds/sm_map_rando)
+> and lordlou's [SMBasepatch](https://github.com/lordlou/SMBasepatch). lordlou's world is the established Map Rando
+> Archipelago world; this repository is **not** meant to replace it. It started as an experiment: to see whether the
+> world could track upstream Map Rando automatically and expose every maprando.com setting and preset as options.
+> If you just want to play Map Rando in Archipelago, use lordlou's version.
 
-This is a continuation of [lordlou's Map Rando Archipelago world](https://github.com/MultiworldGG/MultiworldGG/tree/main/worlds/sm_map_rando)
-(Map Rando v119), updated to Map Rando v123 and extended to expose every maprando.com setting and preset.
+An experimental Archipelago world (`sm_map_rando.apworld`) for [Super Metroid Map Rando](https://maprando.com). It
+uses Map Rando v123 (lordlou's world uses v119) and exposes all the settings and presets of the maprando.com website as
+Archipelago options.
 
 **Download**: see [Releases](https://github.com/JimLundin/sm-map-rando-archipelago/releases):
 
