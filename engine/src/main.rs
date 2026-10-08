@@ -1,8 +1,9 @@
 //! `smmr-engine`: upstream Map Rando, unmodified, behind a JSON protocol.
 //!
 //! Usage: `smmr-engine --data <MapRandomizer checkout or data copy> <command>`
-//! The request is a JSON object on stdin. The response is the last line of stdout (Map Rando prints progress before
-//! it), a JSON object: `{"ok": <result>}`, or `{"error": "<message>"}` with exit code 1.
+//! The request is a JSON object on stdin, the response a JSON object on a stdout line that starts with the byte 1E
+//! (Map Rando prints progress to stdout too): `{"ok": <result>}`, or `{"error": "<message>"}` with exit code 1.
+//! `serve` loads Map Rando's data once, then answers requests `{"command": ..., ...}`, one per line, until stdin ends.
 //!
 //! Commands:
 //! - `info`: the item locations, items and version (stable facts the world is built from)
@@ -28,11 +29,17 @@ use maprando::settings::{RandomizerSettings, StartLocationMode, try_upgrade_sett
 use maprando_game::{GameData, LinksDataGroup, Map};
 use rand::{RngCore, SeedableRng};
 use serde_json::{Value, json};
-use std::io::Read;
+use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 
 const VERSION: usize = include!("../../MapRandomizer/rust/VERSION");
 const MAX_ATTEMPTS: usize = 2000;
+/// The map pool directory (and download name, see maprando's scripts/download_data.sh) of each map layout.
+const MAP_POOLS: [(&str, &str); 3] = [
+    ("Small", "v119-small-avro"),
+    ("Standard", "v119-standard-avro"),
+    ("Wild", "v119-wild-avro"),
+];
 
 struct Engine {
     game_data: GameData,
@@ -77,10 +84,23 @@ impl Engine {
                 })
             })
             .collect();
+        let p = &self.preset_data;
+        let names = |presets: Vec<Option<String>>| presets.into_iter().flatten().collect::<Vec<_>>();
         Ok(json!({
             "version": VERSION,
             "items": self.game_data.item_isv.keys,
             "item_locations": locations,
+            "map_pools": MAP_POOLS.iter().map(|(l, p)| (l.to_string(), json!(p))).collect::<serde_json::Map<_, _>>(),
+            // Each settings category's preset names, in Map Rando's (website) order.
+            "category_presets": {
+                "skill_assumption_settings": names(p.skill_presets.iter().map(|x| x.preset.clone()).collect()),
+                "item_progression_settings":
+                    names(p.item_progression_presets.iter().map(|x| x.preset.clone()).collect()),
+                "quality_of_life_settings":
+                    names(p.quality_of_life_presets.iter().map(|x| x.preset.clone()).collect()),
+                "objective_settings": names(p.objective_presets.iter().map(|x| x.preset.clone()).collect()),
+                "doors_settings": names(p.doors_presets.iter().map(|x| x.preset.clone()).collect()),
+            },
         }))
     }
 
@@ -94,11 +114,7 @@ impl Engine {
         let mut pools: Vec<(&str, PathBuf)> = vec![("Vanilla", PathBuf::from("../maps/vanilla"))];
         let dirs = maps_dir.into_iter().chain([Path::new("../maps")]);
         for dir in dirs {
-            for (layout, pool) in [
-                ("Small", "v119-small-avro"),
-                ("Standard", "v119-standard-avro"),
-                ("Wild", "v119-wild-avro"),
-            ] {
+            for (layout, pool) in MAP_POOLS {
                 if dir.join(pool).is_dir() && !pools.iter().any(|(l, _)| *l == layout) {
                     pools.push((layout, dir.join(pool)));
                 }
@@ -228,23 +244,27 @@ fn seed_hash(display_seed: usize) -> String {
         .join(" ")
 }
 
-fn run(args: &[String]) -> Result<Value> {
-    let (data, command) = match args {
-        [flag, data, command] if flag == "--data" => (PathBuf::from(data), command.as_str()),
-        _ => bail!("usage: smmr-engine --data <dir> <info|upgrade|randomize|rom>"),
+/// Responses are lines starting with this byte (ASCII record separator): Map Rando prints progress to stdout too.
+const RESPONSE: char = '\u{1e}';
+
+fn respond(result: Result<Value>) -> bool {
+    let ok = result.is_ok();
+    let response = match result {
+        Ok(value) => json!({ "ok": value }),
+        Err(e) => json!({ "error": format!("{e:#}") }),
     };
-    let mut input = String::new();
-    std::io::stdin().read_to_string(&mut input)?;
-    let req: Value = if input.trim().is_empty() { json!({}) } else { serde_json::from_str(&input)? };
-    // Paths in the request are resolved by the caller (absolute) before we change directory.
-    std::env::set_current_dir(data.join("rust"))
-        .with_context(|| format!("{} is not a Map Rando data directory", data.display()))?;
-    let engine = Engine::load()?;
+    let mut out = std::io::stdout().lock();
+    let _ = writeln!(out, "{RESPONSE}{response}");
+    let _ = out.flush();
+    ok
+}
+
+fn dispatch(engine: &Engine, command: &str, req: &Value) -> Result<Value> {
     match command {
         "info" => engine.info(),
-        "upgrade" => engine.upgrade(&req),
-        "randomize" => engine.randomize(&req),
-        "rom" => engine.rom(&req),
+        "upgrade" => engine.upgrade(req),
+        "randomize" => engine.randomize(req),
+        "rom" => engine.rom(req),
         _ => bail!("unknown command {command}"),
     }
 }
@@ -252,11 +272,43 @@ fn run(args: &[String]) -> Result<Value> {
 fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
     let args: Vec<String> = std::env::args().skip(1).collect();
-    match run(&args) {
-        Ok(result) => println!("{}", json!({ "ok": result })),
+    let (data, command) = match args.as_slice() {
+        [flag, data, command] if flag == "--data" => (PathBuf::from(data), command.clone()),
+        _ => {
+            respond(Err(anyhow::anyhow!("usage: smmr-engine --data <dir> <info|upgrade|randomize|rom|serve>")));
+            std::process::exit(2);
+        }
+    };
+    // Paths in requests are absolute (the caller resolves them), so changing directory doesn't affect them.
+    let engine = std::env::set_current_dir(data.join("rust"))
+        .with_context(|| format!("{} is not a Map Rando data directory", data.display()))
+        .and_then(|_| Engine::load());
+    let engine = match engine {
+        Ok(engine) => engine,
         Err(e) => {
-            println!("{}", json!({ "error": format!("{e:#}") }));
+            respond(Err(e));
             std::process::exit(1);
         }
+    };
+    if command == "serve" {
+        // One request per line, `{"command": ..., ...}`; one response line each. Ends at the end of stdin.
+        for line in std::io::stdin().lock().lines() {
+            let Ok(line) = line else { break };
+            let result = serde_json::from_str::<Value>(&line).map_err(anyhow::Error::from).and_then(|req| {
+                let command = req["command"].as_str().unwrap_or_default().to_string();
+                dispatch(&engine, &command, &req)
+            });
+            respond(result);
+        }
+        return;
+    }
+    let mut input = String::new();
+    let result = std::io::stdin()
+        .read_to_string(&mut input)
+        .map_err(anyhow::Error::from)
+        .and_then(|_| Ok(if input.trim().is_empty() { json!({}) } else { serde_json::from_str(&input)? }))
+        .and_then(|req| dispatch(&engine, &command, &req));
+    if !respond(result) {
+        std::process::exit(1);
     }
 }

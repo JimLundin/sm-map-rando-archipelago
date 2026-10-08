@@ -7,12 +7,11 @@ import base64
 import json
 import os
 import threading
-from dataclasses import dataclass
 from typing import Any, ClassVar, Dict, List
 
 import settings
 from BaseClasses import Item, ItemClassification, Location, LocationProgressType, Region
-from Options import Choice, OptionError, PerGameCommonOptions
+from Options import OptionError
 from worlds.AutoWorld import World
 
 from . import runtime
@@ -22,6 +21,7 @@ from .core.logic import FILLER, PROGRESSION, USEFUL, LogicModel, build_logic
 from .core import mwpatch
 from .core.mwplan import PlacedItem, plan
 from .core.options import build_settings
+from .options import SMMROptions, values
 from .patch import GAME, SM_JU_MD5, SMMRProcedurePatch
 
 CLASSIFICATIONS = {PROGRESSION: ItemClassification.progression, USEFUL: ItemClassification.useful,
@@ -37,34 +37,6 @@ class SMMRSettings(settings.Group):
         md5s = [SM_JU_MD5]
 
     rom_file: RomFile = RomFile(RomFile.copy_to)
-
-
-class Preset(Choice):
-    """Map Rando's full-settings preset (as on maprando.com)."""
-    display_name = "Preset"
-    option_default = 0
-    option_community_race_season_5 = 1
-    option_mentor_tournament = 2
-    option_summer_series_expert_challenge = 3
-    default = 0
-    preset_names = {0: "Default", 1: "Community Race Season 5", 2: "Mentor Tournament",
-                    3: "Summer Series Expert Challenge"}
-
-
-class MapLayout(Choice):
-    """How rooms are connected. Vanilla is the original map; the others are Map Rando's map pools."""
-    display_name = "Map Layout"
-    option_vanilla = 0
-    option_standard = 1
-    option_small = 2
-    option_wild = 3
-    default = 1
-
-
-@dataclass
-class SMMROptions(PerGameCommonOptions):
-    preset: Preset
-    map_layout: MapLayout
 
 
 class SMMRItem(Item):
@@ -100,14 +72,14 @@ class SMMRWorld(World):
         self.rom_name_ready = threading.Event()
 
     def generate_early(self) -> None:
-        preset_name = self.options.preset.preset_names[self.options.preset.value]
-        settings_ = build_settings(runtime.preset(preset_name), self.options.map_layout.current_option_name,
-                                   self.random.getrandbits(32))
+        option_values = values(self.options)
+        runtime.ensure_map_pool(option_values.map_layout)
+        settings_ = build_settings(runtime.full_presets(), option_values, self.random.getrandbits(32))
         try:
             self.rando_settings = runtime.engine().upgrade(settings_)
             self.seed_artifact = runtime.engine().randomize(self.rando_settings, self.random.getrandbits(32))
         except EngineError as e:
-            raise OptionError(f"{GAME} ({self.player_name}, preset {preset_name}): {e}") from e
+            raise OptionError(f"{GAME} ({self.player_name}, preset {option_values.preset}): {e}") from e
         self.logic = build_logic(self.seed_artifact, _catalog)
 
     def create_regions(self) -> None:

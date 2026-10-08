@@ -1,4 +1,5 @@
-"""Bundle Map Rando's full-settings presets as world data (`world/smmr/data/presets.json`)."""
+"""Bundle Map Rando's full-settings presets as world data (`world/smmr/data/presets.json`). The category presets need
+no copy: the engine's `info` lists their names, and Map Rando's upgrade expands a category preset from its name."""
 import json
 from pathlib import Path
 

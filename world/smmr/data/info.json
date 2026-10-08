@@ -1,4 +1,48 @@
 {
+ "category_presets": {
+  "doors_settings": [
+   "Blue",
+   "Ammo",
+   "Beam"
+  ],
+  "item_progression_settings": [
+   "Normal",
+   "Tricky",
+   "Technical",
+   "Challenge",
+   "Desolate"
+  ],
+  "objective_settings": [
+   "None",
+   "Bosses",
+   "Minibosses",
+   "Chozos",
+   "Pirates",
+   "Metroids",
+   "Random"
+  ],
+  "quality_of_life_settings": [
+   "Off",
+   "Low",
+   "Default",
+   "High",
+   "Max"
+  ],
+  "skill_assumption_settings": [
+   "Implicit",
+   "Basic",
+   "Medium",
+   "Hard",
+   "Very Hard",
+   "Expert",
+   "Expert+",
+   "Extreme",
+   "Extreme+",
+   "Insane",
+   "Insane+",
+   "Beyond"
+  ]
+ },
  "item_locations": [
   {
    "area": "East Crateria",
@@ -928,5 +972,10 @@
   "SparkBooster",
   "BlueBooster"
  ],
+ "map_pools": {
+  "Small": "v119-small-avro",
+  "Standard": "v119-standard-avro",
+  "Wild": "v119-wild-avro"
+ },
  "version": 123
 }

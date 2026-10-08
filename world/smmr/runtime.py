@@ -70,9 +70,24 @@ def _extract_bundled_engine(maps_dir: Optional[Path]) -> SubprocessEngine:
     return SubprocessEngine(target / executable, target / "data", maps_dir or target / "maps")
 
 
+def ensure_map_pool(map_layout: str) -> None:
+    """Download the map layout's pool if this machine doesn't have it yet (hundreds of MB, once)."""
+    pool = catalog_info()["map_pools"].get(map_layout)
+    if pool is not None:
+        from . import fetch
+        current = engine()
+        fetch.map_pool(current.maps_dir or current.data_dir / "maps", pool)
+
+
+@lru_cache(maxsize=None)
+def catalog_info() -> Dict[str, Any]:
+    """The engine's `info`, as recorded in data/info.json."""
+    return json.loads(data("info.json"))
+
+
 @lru_cache(maxsize=None)
 def catalog() -> Catalog:
-    return Catalog.from_info(json.loads(data("info.json")))
+    return Catalog.from_info(catalog_info())
 
 
 @lru_cache(maxsize=None)
@@ -80,5 +95,7 @@ def abi() -> Abi:
     return Abi.parse(data("abi.toml").decode())
 
 
-def preset(name: str) -> Dict[str, Any]:
-    return json.loads(data("presets.json"))[name]
+@lru_cache(maxsize=None)
+def full_presets() -> Dict[str, Any]:
+    """Map Rando's full-settings presets, by name."""
+    return json.loads(data("presets.json"))
