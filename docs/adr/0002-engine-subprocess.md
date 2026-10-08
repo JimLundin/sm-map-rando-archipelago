@@ -1,6 +1,6 @@
 # 0002: The engine is our binary over unmodified Map Rando, behind JSON
 
-Status: accepted (2026-10)
+Status: accepted (2026-10). "Unmodified" superseded by ADR 0005: the submodule is our fork, upstream plus foreign items.
 
 ## Context
 

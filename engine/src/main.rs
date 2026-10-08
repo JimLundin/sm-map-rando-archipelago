@@ -1,4 +1,4 @@
-//! `smmr-engine`: upstream Map Rando, unmodified, behind a JSON protocol.
+//! `smmr-engine`: Map Rando (our fork, ADR 0005) behind a JSON protocol.
 //!
 //! Usage: `smmr-engine --data <MapRandomizer checkout or data copy> <command>`
 //! The request is a JSON object on stdin, the response a JSON object on a stdout line that starts with the byte 1E

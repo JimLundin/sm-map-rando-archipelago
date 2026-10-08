@@ -2,7 +2,8 @@
 
 The Super Metroid Map Rando world for Archipelago, rebuilt from the ground up. It has no code from lordlou's world,
 lordlou's `pysmmaprando` binding or SMBasepatch (ADR 0001). Its upstream is Map Rando (blkerby/MapRandomizer, MIT),
-used **unmodified** (ADR 0002), plus Archipelago's public World and SNI client APIs.
+used through our fork: upstream plus foreign items (ADR 0002, ADR 0005), plus Archipelago's public World and SNI
+client APIs.
 
 ## Principles
 
@@ -26,7 +27,7 @@ used **unmodified** (ADR 0002), plus Archipelago's public World and SNI client A
   player YAML ─► options.py (data-driven Choices) ─► [S1 core.options] ──────────────────► settings (pre-upgrade)
                                                            │
                          ┌──────────────── engine port (core.engine) ───────────────┐
-                         │  smmr-engine serve  (Rust, upstream Map Rando unmodified) │
+                         │  smmr-engine serve  (Rust, Map Rando: our fork)           │
                          │    upgrade · randomize · rom · info      JSON lines       │
                          └───────────────────────────────────────────────────────────┘
                                                            │ upgrade ─────────────────► RandoSettings
@@ -50,7 +51,7 @@ used **unmodified** (ADR 0002), plus Archipelago's public World and SNI client A
  PLAY
  ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
   ROM ◄── SNI ──► client.py ──► [S6 core.sync] ──► AP server
-   │ collected-item bits $7E:D870   (send: any pickup sets them; others' items are Map Rando "Nothing")
+   │ collected-item bits $7E:D870   (send: any pickup sets them; others' items are foreign items)
    │ mailbox $7E:F5A0 ◄─ client      (receive: the tick spawns the item's own Map Rando PLM on Samus)
    │ received count $7E:FE94 ─► client (saved with the save file)
 
@@ -81,7 +82,7 @@ used **unmodified** (ADR 0002), plus Archipelago's public World and SNI client A
      abi.py, ips.py             ROM ABI codecs, IPS
      sync.py      S6            memory snapshot → client actions
    data/                        abi.toml, mw.ips, info.json, presets.json (generated, committed)
- engine/                        Rust: smmr-engine (path dependency on MapRandomizer/, unmodified)
+ engine/                        Rust: smmr-engine (path dependency on MapRandomizer/, our fork)
  mw/                            our 65816 asm (asar)
  tools/                         stage runner, builds, emulator harness, fixture recording, e2e
  tests/core  tests/engine  tests/rom      per-layer tests; world/smmr/test runs inside Archipelago
@@ -101,15 +102,17 @@ used **unmodified** (ADR 0002), plus Archipelago's public World and SNI client A
 
 - [ADR 0001](adr/0001-clean-room-rewrite.md): a clean-room rewrite, with no code from lordlou's world, binding or
   basepatch.
-- [ADR 0002](adr/0002-engine-subprocess.md): the engine is our own binary over unmodified Map Rando, behind JSON.
-- [ADR 0003](adr/0003-multiworld-on-map-rando-plms.md): send through Nothing items, receive by spawning the item's
-  own PLM.
+- [ADR 0002](adr/0002-engine-subprocess.md): the engine is our own binary over Map Rando, behind JSON.
+- [ADR 0003](adr/0003-multiworld-on-map-rando-plms.md): send through Nothing items (superseded by 0005), receive by
+  spawning the item's own PLM.
 - [ADR 0004](adr/0004-step-logic.md): logic from Map Rando's placement steps, with narrow steps kept local.
+- [ADR 0005](adr/0005-foreign-items-in-our-map-rando-fork.md): other worlds' items are foreign items, in our fork
+  of Map Rando.
 
 ## Not done yet
 
 - Customization (sprite, palettes, music, controller): the ROM uses Map Rando's defaults.
-- Off-world items are Map Rando's Nothing item (drawn as Map Rando draws Nothing), with no "sent X to Y" message,
-  and received items show only their own message box.
+- Off-world items are foreign items with one placeholder graphic, and their pickup only plays a sound (no "sent X
+  to Y" message). Received items show only their own message box.
 - Shared maps across worlds, death link, hint area data and item credits.
 - Engine builds for platforms other than this machine's (CI matrix), and release automation.

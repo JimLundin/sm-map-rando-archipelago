@@ -1,4 +1,4 @@
 [submodule "MapRandomizer"]
 	path = MapRandomizer
-	url = https://github.com/blkerby/MapRandomizer.git
-	branch = main
+	url = https://github.com/JimLundin/MapRandomizer.git
+	branch = foreign-item

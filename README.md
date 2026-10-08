@@ -2,8 +2,9 @@
 
 An Archipelago world for [Super Metroid Map Rando](https://maprando.com) (Map Rando v123), rebuilt from the ground up.
 It contains no code from lordlou's Map Rando world, lordlou's native binding or SMBasepatch (see
-`docs/adr/0001-clean-room-rewrite.md`). It uses upstream [Map Rando](https://github.com/blkerby/MapRandomizer) without
-modifications.
+`docs/adr/0001-clean-room-rewrite.md`). It uses [Map Rando](https://github.com/blkerby/MapRandomizer) through our fork
+([JimLundin/MapRandomizer](https://github.com/JimLundin/MapRandomizer), branch `foreign-item`): upstream plus
+foreign items, which show other worlds' items (`docs/specs/foreign-items.md`).
 
 You need your own Super Metroid (JU) ROM; none is included or distributed.
 
@@ -11,8 +12,9 @@ You need your own Super Metroid (JU) ROM; none is included or distributed.
 
 See `docs/architecture.md` for the diagram. In short:
 
-- **Engine** (`engine/`): our Rust binary over the unmodified `MapRandomizer` submodule. It speaks JSON:
-  `info`, `upgrade`, `randomize`, `rom`, and `serve` for many requests from one process.
+- **Engine** (`engine/`): our Rust binary over the `MapRandomizer` submodule: our fork of Map Rando, upstream plus
+  foreign items (ADR 0005). It speaks JSON: `info`, `upgrade`, `randomize`, `rom`, and `serve` for many requests from
+  one process.
 - **Core** (`world/smmr/core/`): the pipeline stages as pure functions with JSON artifacts between them (options →
   settings → Seed → logic → plan → ROM). Standard library only.
 - **World** (`world/smmr/`): thin Archipelago adapters. The World, the options (built from Map Rando's presets), the
@@ -54,8 +56,8 @@ After a Map Rando update (submodule bump): `make data fixtures`, then the loops 
 ## Status
 
 Working: solo and multiworld generation, ROM patching, sending and receiving items, the SNI client, options from Map
-Rando's presets, map pools downloaded on demand, packaging. Not yet: customization, off-world item graphics and
-messages, shared maps, death link, hints, credits, multi-platform CI (see `docs/architecture.md`).
+Rando's presets, map pools downloaded on demand, packaging. Not yet: customization, per-class off-world item graphics,
+"sent X to Y" messages, shared maps, death link, hints, credits, multi-platform CI (see `docs/architecture.md`).
 
 ## License and credits
 

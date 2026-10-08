@@ -17,6 +17,17 @@ def rom_name(abi: Abi, player: int, seed: int) -> str:
     return f"SMMR{abi.version}{player:03d}{seed % 10 ** 13:013d}"
 
 
+CHECKSUM = 0x7FDC   # LoROM header: u16 checksum complement, then u16 checksum
+
+
+def fix_checksum(rom: bytearray) -> None:
+    """Recompute the header checksum, as Map Rando's patcher does: its ROM checks itself (patches/src/self_check.asm)
+    and stops with "SELF CHECK FAIL" if the checksum doesn't match."""
+    rom[CHECKSUM:CHECKSUM + 4] = b"\xff\xff\x00\x00"
+    checksum = sum(rom) & 0xFFFF
+    rom[CHECKSUM:CHECKSUM + 4] = (checksum ^ 0xFFFF).to_bytes(2, "little") + checksum.to_bytes(2, "little")
+
+
 def apply(map_rando_rom: bytes, mw_ips: bytes, abi: Abi, catalog: Catalog, name: str) -> bytes:
     rom = bytearray(map_rando_rom)
     bits = location_bits(rom, catalog)
@@ -27,4 +38,5 @@ def apply(map_rando_rom: bytes, mw_ips: bytes, abi: Abi, catalog: Catalog, name:
                           (abi.rom["location_table"], abi.location_table(bits)),
                           (abi.rom["rom_name"], abi.rom_name(name))]:
         rom[snes_to_pc(address):snes_to_pc(address) + len(data)] = data
+    fix_checksum(rom)
     return bytes(rom)

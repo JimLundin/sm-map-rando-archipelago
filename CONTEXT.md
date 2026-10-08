@@ -8,8 +8,8 @@ S6 sync (the client's decisions).
 
 **Artifact** — what passes between stages, serializable as JSON: settings, Seed, LogicModel, MwPlan, the ROM.
 
-**Engine** — `smmr-engine`, our Rust binary over unmodified Map Rando. The world reaches it only through the engine
-port (`core.engine.Engine`).
+**Engine** — `smmr-engine`, our Rust binary over Map Rando (our fork: upstream plus foreign items, ADR 0005). The world
+reaches it only through the engine port (`core.engine.Engine`).
 
 **Seed** — the engine's `randomize` output: Map Rando's `randomization` (map, doors, objectives, item placement, start)
 and the spoiler's step summary.
@@ -22,8 +22,12 @@ item PLM is in the ROM, and its **collected bit** is that PLM's room argument.
 the earlier steps. A **bottleneck step** has fewer than 5 locations and keeps Map Rando's own items when
 `local_early_progression` is on.
 
-**Off-world item** — an item at one of our locations that belongs to another world. The ROM shows Map Rando's Nothing
+**Off-world item** — an item at one of our locations that belongs to another world. The ROM shows a foreign item
 there.
+
+**Foreign item** — Map Rando's item kind for an off-world item (our fork, ADR 0005): `Randomization.foreign_items`,
+at a location whose placement is Nothing. It can be picked up, sets the location's collected bit, gives nothing,
+and calls `foreign_item_hook`. Its class (progression, useful, filler) decides its map marker.
 
 **ROM ABI** — `world/smmr/data/abi.toml`: every address and format the patcher, the ROM and the client share. It's the
 only copy: the asm defines and `core.abi` come from it.

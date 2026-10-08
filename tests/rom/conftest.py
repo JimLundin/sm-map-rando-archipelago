@@ -56,10 +56,8 @@ def patched_rom(map_rando_rom, abi, catalog) -> bytes:
                          mwpatch.rom_name(abi, 1, 12345))
 
 
-@pytest.fixture(scope="session")
-def _emulator_and_gameplay_state(patched_rom):
-    from emu import Emulator
-    emu = Emulator(patched_rom, CORE)
+def boot_to_gameplay(emu) -> None:
+    """From power-on through the title screen and file select into a new game."""
     for i in range(300):
         emu.run(10)
         if i % 6 == 0:
@@ -69,6 +67,13 @@ def _emulator_and_gameplay_state(patched_rom):
     else:
         pytest.fail("the ROM didn't reach gameplay")
     emu.run(60)
+
+
+@pytest.fixture(scope="session")
+def _emulator_and_gameplay_state(patched_rom):
+    from emu import Emulator
+    emu = Emulator(patched_rom, CORE)
+    boot_to_gameplay(emu)
     yield emu, emu.save_state()
     emu.close()
 

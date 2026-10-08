@@ -1,6 +1,6 @@
 # 0003: Send through Nothing items; receive by spawning the item's own PLM
 
-Status: accepted (2026-10)
+Status: accepted (2026-10). Sending superseded by ADR 0005: Nothing is collected from the start.
 
 ## Context
 

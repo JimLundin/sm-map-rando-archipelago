@@ -29,6 +29,13 @@ CLASSIFICATIONS = {PROGRESSION: ItemClassification.progression, USEFUL: ItemClas
 _catalog = runtime.catalog()
 
 
+def classification(item: Item) -> str:
+    """An item's classification as core.logic names it (traps count as filler)."""
+    if item.advancement:
+        return PROGRESSION
+    return USEFUL if item.useful else FILLER
+
+
 class SMMRSettings(settings.Group):
     class RomFile(settings.SNESRomPath):
         """File name of the Super Metroid (JU) ROM"""
@@ -149,9 +156,10 @@ class SMMRWorld(World):
         for info in _catalog.locations:
             item = self.multiworld.get_location(info.name, self.player).item
             assert item is not None
-            placed.append(PlacedItem(item.name, item.player, item.game))
+            placed.append(PlacedItem(item.name, item.player, item.game, classification(item)))
         mw = plan(_catalog, placed, self.player, self.game)
-        randomization = dict(self.seed_artifact["randomization"], item_placement=mw.item_placement)
+        randomization = dict(self.seed_artifact["randomization"], item_placement=mw.item_placement,
+                             foreign_items=mw.foreign_items)
         patch = SMMRProcedurePatch(player=self.player, player_name=self.player_name)
         patch.write_file("smmr.json", json.dumps({"settings": self.rando_settings, "randomization": randomization,
                                                   "rom_name": self.rom_name}).encode())

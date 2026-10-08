@@ -1,7 +1,7 @@
 ; Super Metroid Map Rando multiworld patch: receiving items.
 ;
-; Sending needs no code: items for other worlds are Map Rando "Nothing" items, whose pickup sets the vanilla
-; item-collected bit like any item, and the client reads those bits.
+; Sending needs no code here: items for other worlds are Map Rando foreign items (ADR 0005), whose pickup sets the
+; vanilla item-collected bit like any item, and the client reads those bits.
 ;
 ; Receiving: the client puts one item in the mailbox (abi.toml [wram]). During main gameplay, the tick spawns that
 ; item's own Map Rando item PLM on Samus, with a negative room argument (no collected bit), and triggers it once it
