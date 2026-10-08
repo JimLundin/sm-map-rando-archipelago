@@ -9,11 +9,13 @@ from conftest import CORE, ROOT, VANILLA, boot_to_gameplay
 from core import mwpatch
 from core.catalog import LOCATION_ID_BASE
 from core.engine import SubprocessEngine
+from core.mwplan import message
 from core.sync import Snapshot, step
 
 MORPH_BALL_ROOM_ITEM = 13          # an open item; Samus starts left of it and walks right to pick it up
 OTHERS = {10: "Progression", 42: "Useful", 77: "Filler"}   # a shot block, a shot block, a chozo orb
 EQUIPMENT, BEAMS, MAX_MISSILES, MAX_ENERGY = 0x09A4, 0x09A8, 0x09C8, 0x09C4
+MESSAGE_BOX, FRAME_COUNTER = 0x1C1F, 0x05B6
 
 
 @pytest.fixture(scope="module")
@@ -26,7 +28,8 @@ def foreign_rom(abi, catalog) -> bytes:
     foreign = {**OTHERS, MORPH_BALL_ROOM_ITEM: "Progression"}
     randomization["item_placement"] = ["Nothing" if i in foreign else item
                                        for i, item in enumerate(randomization["item_placement"])]
-    randomization["foreign_items"] = [{"location_idx": i, "class": c} for i, c in foreign.items()]
+    randomization["foreign_items"] = [{"location_idx": i, "class": c, "message": message("Alice", "Hookshot")}
+                                      for i, c in foreign.items()]
     location = catalog.locations[MORPH_BALL_ROOM_ITEM]
     vanilla = Path(VANILLA).read_bytes()
     x, y = vanilla[location.plm_addr + 2], vanilla[location.plm_addr + 3]
@@ -59,8 +62,8 @@ def test_foreign_items_are_not_collected_in_a_new_game(foreign_game, foreign_rom
         assert not collected(foreign_game, foreign_rom, catalog.locations[index]), index
 
 
-def test_picking_up_a_foreign_item_gives_nothing_and_the_client_reports_its_location(foreign_game, foreign_rom, abi,
-                                                                                     catalog):
+def test_picking_up_a_foreign_item_shows_its_message_gives_nothing_and_the_client_reports_it(foreign_game, foreign_rom,
+                                                                                             abi, catalog):
     game = foreign_game
     before = [game.wram.u16(a) for a in (EQUIPMENT, BEAMS, MAX_MISSILES, MAX_ENERGY)]
     location = catalog.locations[MORPH_BALL_ROOM_ITEM]
@@ -72,6 +75,18 @@ def test_picking_up_a_foreign_item_gives_nothing_and_the_client_reports_its_loca
         if collected(game, foreign_rom, location):
             break
     assert collected(game, foreign_rom, location)
+    game.run(30)
+    assert game.wram.u16(MESSAGE_BOX) == 0x30   # the message box is open: the frame counter stops
+    frame = game.wram.u16(FRAME_COUNTER)
+    game.run(30)
+    assert game.wram.u16(FRAME_COUNTER) == frame
+    for _ in range(10):                          # A closes it once its fanfare or sound is done
+        game.press("a", frames=6, release=54)
+        if game.wram.u16(FRAME_COUNTER) != frame:
+            break
+    frame = game.wram.u16(FRAME_COUNTER)
+    game.run(60)
+    assert game.wram.u16(FRAME_COUNTER) == (frame + 60) & 0xFFFF
     assert [game.wram.u16(a) for a in (EQUIPMENT, BEAMS, MAX_MISSILES, MAX_ENERGY)] == before
     w = abi.wram
     table_start = mwpatch.snes_to_pc(abi.rom["location_table"])

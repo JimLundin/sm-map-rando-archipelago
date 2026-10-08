@@ -27,7 +27,8 @@ there.
 
 **Foreign item** — Map Rando's item kind for an off-world item (our fork, ADR 0005): `Randomization.foreign_items`,
 at a location whose placement is Nothing. It can be picked up, sets the location's collected bit, gives nothing,
-and calls `foreign_item_hook`. Its class (progression, useful, filler) decides its map marker.
+calls `foreign_item_hook` and shows its message ("ALICE - HOOKSHOT"). Its class (progression, useful, filler)
+decides its map marker.
 
 **ROM ABI** — `world/smmr/data/abi.toml`: every address and format the patcher, the ROM and the client share. It's the
 only copy: the asm defines and `core.abi` come from it.

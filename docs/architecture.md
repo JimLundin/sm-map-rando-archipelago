@@ -112,7 +112,7 @@ client APIs.
 ## Not done yet
 
 - Customization (sprite, palettes, music, controller): the ROM uses Map Rando's defaults.
-- Off-world items are foreign items with one placeholder graphic, and their pickup only plays a sound (no "sent X
-  to Y" message). Received items show only their own message box.
+- Off-world items are foreign items with one placeholder graphic for every class. Received items show only their
+  own message box, without who sent them.
 - Shared maps across worlds, death link, hint area data and item credits.
 - Engine builds for platforms other than this machine's (CI matrix), and release automation.

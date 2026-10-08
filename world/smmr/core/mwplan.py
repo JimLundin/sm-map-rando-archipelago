@@ -2,10 +2,12 @@
 
 Our own items are Map Rando's items at the locations AP chose. Where an item for another world landed, Samus gets
 Map Rando's Nothing, and the ROM shows a foreign item (our fork of Map Rando, docs/specs/foreign-items.md): a
-collectible item whose pickup sets the location's collected bit, marked on the map by its classification.
+collectible item whose pickup sets the location's collected bit and shows who gets what ("ALICE - HOOKSHOT"),
+marked on the map by its classification.
 """
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Sequence
 
@@ -13,6 +15,24 @@ from .catalog import Catalog
 from .logic import FILLER, PROGRESSION, USEFUL
 
 FOREIGN_CLASSES = {PROGRESSION: "Progression", USEFUL: "Useful", FILLER: "Filler"}
+MESSAGE_ROW = 26                                         # characters in a row of the message box
+MESSAGE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .-?!")
+
+
+def message_text(text: str) -> str:
+    """Text as the message box font can show it: upper case, without accents and apostrophes, any other character
+    a space."""
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().upper().replace("'", "")
+    return " ".join("".join(c if c in MESSAGE_CHARS else " " for c in text).split())
+
+
+def message(recipient: str, item: str) -> List[str]:
+    """The foreign item's message: "RECIPIENT - ITEM" in one row if it fits, else the two in a row each."""
+    recipient, item = message_text(recipient), message_text(item)
+    row = f"{recipient} - {item}"
+    if len(row) <= MESSAGE_ROW:
+        return [row]
+    return [recipient[:MESSAGE_ROW].rstrip(), item[:MESSAGE_ROW].rstrip()]
 
 
 @dataclass(frozen=True)
@@ -22,6 +42,7 @@ class PlacedItem:
     player: int
     game: str
     classification: str = FILLER   # core.logic's PROGRESSION, USEFUL or FILLER
+    recipient: str = ""            # the name of the player it belongs to
 
 
 @dataclass(frozen=True)
@@ -38,5 +59,6 @@ def plan(catalog: Catalog, placed: Sequence[PlacedItem], player: int, game: str)
             placement.append(by_name[item.name].rando_name)
         else:
             placement.append("Nothing")
-            foreign.append({"location_idx": index, "class": FOREIGN_CLASSES[item.classification]})
+            foreign.append({"location_idx": index, "class": FOREIGN_CLASSES[item.classification],
+                            "message": message(item.recipient, item.name)})
     return MwPlan(placement, foreign)

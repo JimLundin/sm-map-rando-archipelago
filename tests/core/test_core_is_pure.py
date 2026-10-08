@@ -4,7 +4,8 @@ from pathlib import Path
 
 CORE = Path(__file__).resolve().parents[2] / "world" / "smmr" / "core"
 ALLOWED_TOP_LEVEL = {"__future__", "collections", "copy", "dataclasses", "functools", "json", "pathlib", "struct",
-                     "subprocess", "tempfile", "threading", "typing", "itertools", "enum", "hashlib", "zlib", "random", "re", "tomllib", "platform", "sys"}
+                     "subprocess", "tempfile", "threading", "typing", "itertools", "enum", "hashlib", "zlib", "random", "re", "tomllib", "platform", "sys",
+                     "unicodedata"}
 
 
 def test_core_only_imports_the_standard_library_and_itself():

@@ -20,8 +20,14 @@ emulator: with Nothing at locations 10, 42 and 77, all three bits are set at the
   so it's collectible and counts as an item for item %.
 - `patches/src/foreign_item.asm`: three PLMs ($F300 plain, $F304 chozo orb, $F308 shot block), copies of Map Rando's
   Spark Booster PLMs with their own graphics ($89:B800). The pickup sets the room argument item bit, then calls
-  `foreign_item_hook` ($85:A050, JSL, A = the location's item bit, data bank $84). By default the hook plays a
-  click sound. A multiworld patch replaces its first four bytes with a JML.
+  `foreign_item_hook` ($85:A050, JSL, A = the location's item bit, data bank $84), which does nothing by default:
+  a ROM that knows more replaces its first four bytes with a JML.
+- Message: `ForeignItem.message`, up to 2 rows of 26 characters (A-Z, 0-9, space and . - ? !). The pickup plays the
+  item fanfare (with fanfares off, a click and `$05D7` = 2, as `itemsounds.asm`), then shows message box $30: a
+  small box drawn by `foreign_item_message_box` ($85:A054, reached through `extended_msg_boxes.asm`, which is
+  applied whenever there are foreign items) from the table patch.rs writes at $83:C000. The pickup code is in bank
+  $94 ($94:B1B0), the message being shown at $7E:F4E4. Digits are the HUD's, in palette $3800; the font has no
+  `,`, `'`, `/` or `:`.
 - Map markers: `Randomization::marker_item` maps the class to a stand-in item (progression → a unique item,
   useful → E-Tank, filler → Missile), so each marker setting treats it like that item.
 - The item PLM check that decides X-ray visibility (`vanilla_bugfixes.asm`, `check_item_plm`) and the Toilet
@@ -36,6 +42,9 @@ emulator: with Nothing at locations 10, 42 and 77, all three bits are set at the
 | plain | 13 | not collected | bit set, hook gets bit 26, equipment/ammo/energy unchanged, PLM deleted |
 | chozo orb | 15, 36 | not collected | orb bursts, bit set, hook gets the bit, nothing given |
 | shot block | 19, 42 | not collected | bit set, hook gets the bit, nothing given, block reconceals (as vanilla) |
+
+The message box shows from all three containers, in one or two rows. It closes on A after the fanfare as for a
+vanilla Missile at the same location: about 5 s with Vanilla fanfares, 3 s with Trimmed, 2 s with Off.
 
 Each against a control with a vanilla Missile at the same location. The three classes give three different map
 tile sets. Pickups were driven by walking (plain) or by setting the PLM's trigger byte ($1D77,x = $FF, as a shot or
@@ -60,6 +69,5 @@ touch does). The scratch scripts were in /tmp/fi.
 
 ## Next
 
-- `mw.asm` replaces the hook: a "sent X to Y" message, using item and player names the patcher writes.
 - Per-class graphics, and a better graphic.
 - The untested cases above.

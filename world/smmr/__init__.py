@@ -156,7 +156,8 @@ class SMMRWorld(World):
         for info in _catalog.locations:
             item = self.multiworld.get_location(info.name, self.player).item
             assert item is not None
-            placed.append(PlacedItem(item.name, item.player, item.game, classification(item)))
+            placed.append(PlacedItem(item.name, item.player, item.game, classification(item),
+                                     self.multiworld.get_player_name(item.player)))
         mw = plan(_catalog, placed, self.player, self.game)
         randomization = dict(self.seed_artifact["randomization"], item_placement=mw.item_placement,
                              foreign_items=mw.foreign_items)

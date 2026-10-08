@@ -29,4 +29,5 @@ markers and its PLMs, which we can't do from outside the crate.
 - Off-world items can be seen and picked up, and the map marks them by class.
 - A Map Rando update is a rebase of the fork branch onto the new upstream, then `make data fixtures`.
 - `foreign_item.asm` takes most of the free bank $84 space; our `call_plm_setup` moved to $84:F375 (ABI version 2).
-- The hook gives us a place for a "sent X to Y" message, still to do.
+- Picking one up shows who gets what ("ALICE - HOOKSHOT") in a message box, after the item fanfare as Map Rando's
+  setting has it. The message font has A-Z, 0-9, space and . - ? !; `core.mwplan.message_text` maps names to it.
