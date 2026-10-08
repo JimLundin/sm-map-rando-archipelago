@@ -19,14 +19,16 @@ emulator: with Nothing at locations 10, 42 and 77, all three bits are set at the
 - The patcher places a foreign item PLM there instead of Nothing's. It's not added to the Nothing bitmask or count,
   so it's collectible and counts as an item for item %.
 - `patches/src/foreign_item.asm`: three PLMs ($F300 plain, $F304 chozo orb, $F308 shot block), copies of Map Rando's
-  Spark Booster PLMs. Their graphics are the item's class's: a bright diamond (progression), a ring (useful), a small
-  dot (filler), at $89:B800, B900 and BA00. The instruction `load_foreign_gfx` asks bank $94 for the class's
-  arguments of $8764 (load item PLM GFX), which stay in bank $84 (the game keeps their address per graphics slot).
-  Map Rando's `Item Loading.ips` and `vanilla_bugfixes.asm` repurpose vanilla's long-call PLM instructions
+  Spark Booster PLMs. Their graphics are the item's class's: a four-colour orb whose quarters swirl (progression), a
+  blue gem (useful), a grey pebble (filler), at $89:B800, B900 and BA00. They use only colours 1-3, 12-14 of palettes
+  0-3, which are the same in every room (measured in Crateria, Brinstar, Norfair, Wrecked Ship and Maridia); each tile
+  picks its palette per frame, which is how the orb swirls. The instruction `load_foreign_gfx` asks bank $94 for the
+  class's arguments of $8764 (load item PLM GFX), which stay in bank $84 (the game keeps their address per graphics
+  slot). Map Rando's `Item Loading.ips` and `vanilla_bugfixes.asm` repurpose vanilla's long-call PLM instructions
   ($84:86D1-870B), so the instructions are our own. The open PLM loads late like Map Rando's open items
-  (`load_plms_early.asm`). The pickup sets the room argument item bit, then calls
-  `foreign_item_hook` ($85:A050, JSL, A = the location's item bit, data bank $84), which does nothing by default:
-  a ROM that knows more replaces its first four bytes with a JML.
+  (`load_plms_early.asm`). The pickup sets the room argument item bit, then calls `foreign_item_hook` ($85:A050, JSL, A
+  = the location's item bit, data bank $84), which does nothing by default: a ROM that knows more replaces its first
+  four bytes with a JML.
 - Message: `ForeignItem.message`, up to 2 rows of 26 characters (A-Z, 0-9, space and . - ? !). The pickup plays the
   item fanfare (with fanfares off, a click and `$05D7` = 2, as `itemsounds.asm`), then shows message box $30: a
   small box drawn by `foreign_item_message_box` ($85:A054, reached through `extended_msg_boxes.asm`, which is
@@ -63,7 +65,6 @@ touch does). The scratch scripts were in /tmp/fi.
 ## Not done
 
 - The spoiler map and the credits show the marker item and Nothing.
-- Graphics colours: palette 0, as Map Rando's Spark Booster.
 
 ## Found on the way (our repo, fixed)
 
