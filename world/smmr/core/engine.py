@@ -82,6 +82,8 @@ class SubprocessEngine:
             assert self._process.stdin is not None
             self._process.stdin.close()
             self._process.wait(timeout=10)
+        if self._stderr is not None:
+            self._stderr.close()
 
     def info(self) -> Dict[str, Any]:
         return self.call("info", {})
