@@ -16,8 +16,9 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "world" / "smmr"))
 sys.path.insert(0, str(ROOT / "tools"))
 
-from core import ips  # noqa: E402
+from core import mwpatch  # noqa: E402
 from core.abi import Abi  # noqa: E402
+from core.catalog import Catalog  # noqa: E402
 from core.engine import SubprocessEngine  # noqa: E402
 
 CORE = os.environ.get("SMMR_SNES_CORE", "/tmp/snes9x/libretro/snes9x_libretro.so")
@@ -44,10 +45,15 @@ def map_rando_rom() -> bytes:
 
 
 @pytest.fixture(scope="session")
-def patched_rom(map_rando_rom) -> bytes:
-    rom = bytearray(map_rando_rom)
-    ips.apply((ROOT / "world/smmr/data/mw.ips").read_bytes(), rom)
-    return bytes(rom)
+def catalog() -> Catalog:
+    return Catalog.from_info(json.loads((ROOT / "world/smmr/data/info.json").read_text()))
+
+
+@pytest.fixture(scope="session")
+def patched_rom(map_rando_rom, abi, catalog) -> bytes:
+    """The ROM as the player's patch procedure makes it (S5b)."""
+    return mwpatch.apply(map_rando_rom, (ROOT / "world/smmr/data/mw.ips").read_bytes(), abi, catalog,
+                         mwpatch.rom_name(abi, 1, 12345))
 
 
 @pytest.fixture(scope="session")

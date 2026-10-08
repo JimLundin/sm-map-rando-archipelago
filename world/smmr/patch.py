@@ -1,7 +1,7 @@
 """Stage S5, on the player's machine: the .apsmmr patch → the ROM.
 
-The patch holds `smmr.json` ({settings, randomization, plan}). Patching runs the engine's `rom` on the player's
-vanilla ROM (S5a); milestone 4 adds our multiworld patch on top (S5b).
+The patch holds `smmr.json` ({settings, randomization, rom_name}). Patching runs the engine's `rom` on the player's
+vanilla ROM (S5a), then applies our multiworld patch on top (S5b, `core.mwpatch`).
 """
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ import Utils
 from worlds.Files import APPatchExtension, APProcedurePatch
 
 from . import runtime
+from .core import mwpatch
 
 GAME = "Super Metroid Map Rando"
 SM_JU_MD5 = "21f3e98df4780ee1c667b84e57d88675"
@@ -29,7 +30,9 @@ class SMMRPatchExtension(APPatchExtension):
             vanilla, out = Path(tmp) / "vanilla.sfc", Path(tmp) / "out.sfc"
             vanilla.write_bytes(rom)
             runtime.engine().rom(data["settings"], data["randomization"], vanilla, out)
-            return out.read_bytes()
+            map_rando_rom = out.read_bytes()
+        return mwpatch.apply(map_rando_rom, runtime.data("mw.ips"), runtime.abi(), runtime.catalog(),
+                             data["rom_name"])
 
 
 class SMMRProcedurePatch(APProcedurePatch):

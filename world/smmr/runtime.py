@@ -7,15 +7,23 @@ from __future__ import annotations
 
 import json
 import os
+import pkgutil
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict
 
+from .core.abi import Abi
 from .core.catalog import Catalog
 from .core.engine import SubprocessEngine
 
 REPO = Path(__file__).resolve().parents[2]
-PACKAGE = Path(__file__).resolve().parent
+
+
+def data(name: str) -> bytes:
+    """A file in the world's data/ (works from a zipped .apworld too)."""
+    content = pkgutil.get_data(__package__, f"data/{name}")
+    assert content is not None
+    return content
 
 
 @lru_cache(maxsize=None)
@@ -28,8 +36,13 @@ def engine() -> SubprocessEngine:
 
 @lru_cache(maxsize=None)
 def catalog() -> Catalog:
-    return Catalog.from_info(json.loads((PACKAGE / "data" / "info.json").read_text()))
+    return Catalog.from_info(json.loads(data("info.json")))
+
+
+@lru_cache(maxsize=None)
+def abi() -> Abi:
+    return Abi.parse(data("abi.toml").decode())
 
 
 def preset(name: str) -> Dict[str, Any]:
-    return json.loads((PACKAGE / "data" / "presets.json").read_text())[name]
+    return json.loads(data("presets.json"))[name]

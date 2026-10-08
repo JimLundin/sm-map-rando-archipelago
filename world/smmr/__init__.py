@@ -3,8 +3,10 @@ docs/architecture.md); nothing here decides anything about Map Rando.
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
+import threading
 from dataclasses import dataclass
 from typing import Any, ClassVar, Dict, List
 
@@ -14,8 +16,10 @@ from Options import Choice, OptionError, PerGameCommonOptions
 from worlds.AutoWorld import World
 
 from . import runtime
+from .client import SMMRClient  # noqa: F401 (registers the SNI client)
 from .core.engine import EngineError
 from .core.logic import FILLER, PROGRESSION, USEFUL, LogicModel, build_logic
+from .core import mwpatch
 from .core.mwplan import PlacedItem, plan
 from .core.options import build_settings
 from .patch import GAME, SM_JU_MD5, SMMRProcedurePatch
@@ -90,6 +94,11 @@ class SMMRWorld(World):
     seed_artifact: Dict[str, Any]
     logic: LogicModel
 
+    def __init__(self, multiworld, player: int):
+        super().__init__(multiworld, player)
+        self.rom_name = ""
+        self.rom_name_ready = threading.Event()
+
     def generate_early(self) -> None:
         preset_name = self.options.preset.preset_names[self.options.preset.value]
         settings_ = build_settings(runtime.preset(preset_name), self.options.map_layout.current_option_name,
@@ -153,6 +162,13 @@ class SMMRWorld(World):
         return "Missile"
 
     def generate_output(self, output_directory: str) -> None:
+        try:
+            self.write_patch(output_directory)
+        finally:
+            self.rom_name_ready.set()   # modify_multidata waits for it, also when the output failed
+
+    def write_patch(self, output_directory: str) -> None:
+        self.rom_name = mwpatch.rom_name(runtime.abi(), self.player, self.multiworld.seed)
         placed = []
         for info in _catalog.locations:
             item = self.multiworld.get_location(info.name, self.player).item
@@ -161,10 +177,18 @@ class SMMRWorld(World):
         mw = plan(_catalog, placed, self.player, self.game)
         randomization = dict(self.seed_artifact["randomization"], item_placement=mw.item_placement)
         patch = SMMRProcedurePatch(player=self.player, player_name=self.player_name)
-        patch.write_file("smmr.json", json.dumps({"settings": self.rando_settings,
-                                                  "randomization": randomization}).encode())
+        patch.write_file("smmr.json", json.dumps({"settings": self.rando_settings, "randomization": randomization,
+                                                  "rom_name": self.rom_name}).encode())
         name = self.multiworld.get_out_file_name_base(self.player)
         patch.write(os.path.join(output_directory, f"{name}{patch.patch_file_ending}"))
+
+    def modify_multidata(self, multidata: Dict[str, Any]) -> None:
+        # The client connects with the ROM name it reads from the ROM.
+        self.rom_name_ready.wait()
+        if self.rom_name:
+            size = runtime.abi().rom["rom_name_size"]
+            key = base64.b64encode(runtime.abi().rom_name(self.rom_name)[:size]).decode()
+            multidata["connect_names"][key] = multidata["connect_names"][self.player_name]
 
     def fill_slot_data(self) -> Dict[str, Any]:
         return {"seed_hash": self.seed_artifact["seed_hash"],
