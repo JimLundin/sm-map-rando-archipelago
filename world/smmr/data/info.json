@@ -1,0 +1,932 @@
+{
+ "item_locations": [
+  {
+   "area": "East Crateria",
+   "index": 0,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 492104,
+   "room": "The Moat",
+   "room_id": 7
+  },
+  {
+   "area": "Central Crateria",
+   "index": 1,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 492526,
+   "room": "Pit Room",
+   "room_id": 12
+  },
+  {
+   "area": "Central Crateria",
+   "index": 2,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 492678,
+   "room": "230 Missile Room",
+   "room_id": 17
+  },
+  {
+   "area": "Central Crateria",
+   "index": 3,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 492548,
+   "room": "Bomb Torizo Room",
+   "room_id": 19
+  },
+  {
+   "area": "West Crateria",
+   "index": 4,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 492594,
+   "room": "Terminator Room",
+   "room_id": 20
+  },
+  {
+   "area": "West Crateria",
+   "index": 5,
+   "node": "Left Item",
+   "node_id": 5,
+   "plm_addr": 492650,
+   "room": "Green Pirates Shaft",
+   "room_id": 21
+  },
+  {
+   "area": "West Crateria",
+   "index": 6,
+   "node": "Right Item",
+   "node_id": 6,
+   "plm_addr": 492644,
+   "room": "Green Pirates Shaft",
+   "room_id": 21
+  },
+  {
+   "area": "Central Crateria",
+   "index": 7,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 491980,
+   "room": "Crateria Power Bomb Room",
+   "room_id": 28
+  },
+  {
+   "area": "Central Crateria",
+   "index": 8,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 492664,
+   "room": "Climb Supers Room",
+   "room_id": 29
+  },
+  {
+   "area": "West Crateria",
+   "index": 9,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 492132,
+   "room": "Gauntlet Energy Tank Room",
+   "room_id": 31
+  },
+  {
+   "area": "East Crateria",
+   "index": 10,
+   "node": "Top Hidden Item (Above Trippers)",
+   "node_id": 9,
+   "plm_addr": 492014,
+   "room": "West Ocean",
+   "room_id": 32
+  },
+  {
+   "area": "East Crateria",
+   "index": 11,
+   "node": "Left Morph Maze Item",
+   "node_id": 10,
+   "plm_addr": 492020,
+   "room": "West Ocean",
+   "room_id": 32
+  },
+  {
+   "area": "East Crateria",
+   "index": 12,
+   "node": "Bottom Left Underwater Item",
+   "node_id": 11,
+   "plm_addr": 492008,
+   "room": "West Ocean",
+   "room_id": 32
+  },
+  {
+   "area": "Blue Brinstar",
+   "index": 13,
+   "node": "Right Item",
+   "node_id": 4,
+   "plm_addr": 493278,
+   "room": "Morph Ball Room",
+   "room_id": 38
+  },
+  {
+   "area": "Blue Brinstar",
+   "index": 14,
+   "node": "Left Item",
+   "node_id": 5,
+   "plm_addr": 493388,
+   "room": "Morph Ball Room",
+   "room_id": 38
+  },
+  {
+   "area": "Blue Brinstar",
+   "index": 15,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 493570,
+   "room": "First Missile Room",
+   "room_id": 40
+  },
+  {
+   "area": "Blue Brinstar",
+   "index": 16,
+   "node": "Hidden Ceiling Item",
+   "node_id": 3,
+   "plm_addr": 493470,
+   "room": "Blue Brinstar Energy Tank Room",
+   "room_id": 41
+  },
+  {
+   "area": "Blue Brinstar",
+   "index": 17,
+   "node": "Right Item",
+   "node_id": 4,
+   "plm_addr": 493464,
+   "room": "Blue Brinstar Energy Tank Room",
+   "room_id": 41
+  },
+  {
+   "area": "Blue Brinstar",
+   "index": 18,
+   "node": "Pedestal Item",
+   "node_id": 2,
+   "plm_addr": 493622,
+   "room": "Billy Mays Room",
+   "room_id": 43
+  },
+  {
+   "area": "Blue Brinstar",
+   "index": 19,
+   "node": "Hidden Item",
+   "node_id": 3,
+   "plm_addr": 493628,
+   "room": "Billy Mays Room",
+   "room_id": 43
+  },
+  {
+   "area": "Green Brinstar",
+   "index": 20,
+   "node": "Right Etecoon Shaft - Item",
+   "node_id": 11,
+   "plm_addr": 492716,
+   "room": "Green Brinstar Main Shaft",
+   "room_id": 44
+  },
+  {
+   "area": "Green Brinstar",
+   "index": 21,
+   "node": "Lower Item",
+   "node_id": 3,
+   "plm_addr": 492824,
+   "room": "Early Supers Room",
+   "room_id": 45
+  },
+  {
+   "area": "Green Brinstar",
+   "index": 22,
+   "node": "Top Left Item",
+   "node_id": 4,
+   "plm_addr": 492830,
+   "room": "Early Supers Room",
+   "room_id": 45
+  },
+  {
+   "area": "Green Brinstar",
+   "index": 23,
+   "node": "Chozo Item",
+   "node_id": 2,
+   "plm_addr": 492844,
+   "room": "Brinstar Reserve Tank Room",
+   "room_id": 46
+  },
+  {
+   "area": "Green Brinstar",
+   "index": 24,
+   "node": "Middle Visible Item",
+   "node_id": 3,
+   "plm_addr": 492856,
+   "room": "Brinstar Reserve Tank Room",
+   "room_id": 46
+  },
+  {
+   "area": "Green Brinstar",
+   "index": 25,
+   "node": "Right Hidden Item",
+   "node_id": 4,
+   "plm_addr": 492850,
+   "room": "Brinstar Reserve Tank Room",
+   "room_id": 46
+  },
+  {
+   "area": "Green Brinstar",
+   "index": 26,
+   "node": "Top Item",
+   "node_id": 5,
+   "plm_addr": 493506,
+   "room": "Etecoon Energy Tank Room",
+   "room_id": 51
+  },
+  {
+   "area": "Green Brinstar",
+   "index": 27,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 493520,
+   "room": "Etecoon Super Room",
+   "room_id": 52
+  },
+  {
+   "area": "Green Brinstar",
+   "index": 28,
+   "node": "Item (Through the Pipe)",
+   "node_id": 4,
+   "plm_addr": 493174,
+   "room": "Green Hill Zone",
+   "room_id": 54
+  },
+  {
+   "area": "Pink Brinstar",
+   "index": 29,
+   "node": "Top Item (Above Hopper Pit)",
+   "node_id": 10,
+   "plm_addr": 493064,
+   "room": "Big Pink",
+   "room_id": 59
+  },
+  {
+   "area": "Pink Brinstar",
+   "index": 30,
+   "node": "Middle Item",
+   "node_id": 11,
+   "plm_addr": 493070,
+   "room": "Big Pink",
+   "room_id": 59
+  },
+  {
+   "area": "Pink Brinstar",
+   "index": 31,
+   "node": "Bottom Chozo Item",
+   "node_id": 12,
+   "plm_addr": 493076,
+   "room": "Big Pink",
+   "room_id": 59
+  },
+  {
+   "area": "Pink Brinstar",
+   "index": 32,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 493148,
+   "room": "Mission Impossible Room",
+   "room_id": 60
+  },
+  {
+   "area": "Pink Brinstar",
+   "index": 33,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 493604,
+   "room": "Wave Gate Energy Tank Room",
+   "room_id": 62
+  },
+  {
+   "area": "Pink Brinstar",
+   "index": 34,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 492772,
+   "room": "Spore Spawn Super Room",
+   "room_id": 63
+  },
+  {
+   "area": "Pink Brinstar",
+   "index": 35,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 493562,
+   "room": "Waterway Energy Tank Room",
+   "room_id": 65
+  },
+  {
+   "area": "Red Brinstar",
+   "index": 36,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 493686,
+   "room": "X-Ray Scope Room",
+   "room_id": 68
+  },
+  {
+   "area": "Red Brinstar",
+   "index": 37,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 493934,
+   "room": "Spazer Room",
+   "room_id": 71
+  },
+  {
+   "area": "Red Brinstar",
+   "index": 38,
+   "node": "Chozo Item",
+   "node_id": 2,
+   "plm_addr": 493838,
+   "room": "Alpha Power Bomb Room",
+   "room_id": 76
+  },
+  {
+   "area": "Red Brinstar",
+   "index": 39,
+   "node": "Hidden Left Item",
+   "node_id": 3,
+   "plm_addr": 493844,
+   "room": "Alpha Power Bomb Room",
+   "room_id": 76
+  },
+  {
+   "area": "Red Brinstar",
+   "index": 40,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 493770,
+   "room": "Beta Power Bomb Room",
+   "room_id": 77
+  },
+  {
+   "area": "Kraid Brinstar",
+   "index": 41,
+   "node": "Hidden Ceiling Item",
+   "node_id": 2,
+   "plm_addr": 493980,
+   "room": "Warehouse Energy Tank Room",
+   "room_id": 80
+  },
+  {
+   "area": "Kraid Brinstar",
+   "index": 42,
+   "node": "Hidden Item",
+   "node_id": 4,
+   "plm_addr": 494060,
+   "room": "Warehouse Kihunter Room",
+   "room_id": 81
+  },
+  {
+   "area": "Kraid Brinstar",
+   "index": 43,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 494282,
+   "room": "Varia Suit Room",
+   "room_id": 85
+  },
+  {
+   "area": "West Upper Norfair",
+   "index": 44,
+   "node": "Top Right Item",
+   "node_id": 3,
+   "plm_addr": 494572,
+   "room": "Hi Jump Energy Tank Room",
+   "room_id": 88
+  },
+  {
+   "area": "West Upper Norfair",
+   "index": 45,
+   "node": "Top Left Item",
+   "node_id": 4,
+   "plm_addr": 494566,
+   "room": "Hi Jump Energy Tank Room",
+   "room_id": 88
+  },
+  {
+   "area": "West Upper Norfair",
+   "index": 46,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 494508,
+   "room": "Hi Jump Boots Room",
+   "room_id": 89
+  },
+  {
+   "area": "East Upper Norfair",
+   "index": 47,
+   "node": "Hidden Item",
+   "node_id": 3,
+   "plm_addr": 494308,
+   "room": "Cathedral",
+   "room_id": 91
+  },
+  {
+   "area": "East Upper Norfair",
+   "index": 48,
+   "node": "Bottom Right Item",
+   "node_id": 8,
+   "plm_addr": 494694,
+   "room": "Bubble Mountain",
+   "room_id": 97
+  },
+  {
+   "area": "East Upper Norfair",
+   "index": 49,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 494674,
+   "room": "Green Bubbles Tunnel",
+   "room_id": 98
+  },
+  {
+   "area": "East Upper Norfair",
+   "index": 50,
+   "node": "Chozo Ball Item",
+   "node_id": 2,
+   "plm_addr": 494654,
+   "room": "Norfair Reserve Tank Room",
+   "room_id": 99
+  },
+  {
+   "area": "East Upper Norfair",
+   "index": 51,
+   "node": "Hidden Platform Item",
+   "node_id": 3,
+   "plm_addr": 494660,
+   "room": "Norfair Reserve Tank Room",
+   "room_id": 99
+  },
+  {
+   "area": "East Upper Norfair",
+   "index": 52,
+   "node": "Hidden Item",
+   "node_id": 3,
+   "plm_addr": 494708,
+   "room": "Speed Booster Hall",
+   "room_id": 101
+  },
+  {
+   "area": "East Upper Norfair",
+   "index": 53,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 494722,
+   "room": "Speed Booster Room",
+   "room_id": 102
+  },
+  {
+   "area": "East Upper Norfair",
+   "index": 54,
+   "node": "Item",
+   "node_id": 4,
+   "plm_addr": 494780,
+   "room": "Double Chamber",
+   "room_id": 104
+  },
+  {
+   "area": "East Upper Norfair",
+   "index": 55,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 494794,
+   "room": "Wave Beam Room",
+   "room_id": 105
+  },
+  {
+   "area": "West Upper Norfair",
+   "index": 56,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 494372,
+   "room": "Ice Beam Room",
+   "room_id": 109
+  },
+  {
+   "area": "West Upper Norfair",
+   "index": 57,
+   "node": "Hidden Item",
+   "node_id": 3,
+   "plm_addr": 494406,
+   "room": "Crumble Shaft",
+   "room_id": 111
+  },
+  {
+   "area": "West Upper Norfair",
+   "index": 58,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 494528,
+   "room": "Crocomire Escape",
+   "room_id": 121
+  },
+  {
+   "area": "Crocomire Upper Norfair",
+   "index": 59,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 494500,
+   "room": "Crocomire's Room",
+   "room_id": 122
+  },
+  {
+   "area": "Crocomire Upper Norfair",
+   "index": 60,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 494596,
+   "room": "Post Crocomire Power Bomb Room",
+   "room_id": 124
+  },
+  {
+   "area": "Crocomire Upper Norfair",
+   "index": 61,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 494612,
+   "room": "Cosine Room",
+   "room_id": 126
+  },
+  {
+   "area": "Crocomire Upper Norfair",
+   "index": 62,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 494634,
+   "room": "Indiana Jones Room",
+   "room_id": 127
+  },
+  {
+   "area": "Crocomire Upper Norfair",
+   "index": 63,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 494646,
+   "room": "Grapple Beam Room",
+   "room_id": 128
+  },
+  {
+   "area": "East Lower Norfair",
+   "index": 64,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 495808,
+   "room": "Wasteland",
+   "room_id": 138
+  },
+  {
+   "area": "East Lower Norfair",
+   "index": 65,
+   "node": "Hidden Item",
+   "node_id": 2,
+   "plm_addr": 495880,
+   "room": "Ridley Tank Room",
+   "room_id": 143
+  },
+  {
+   "area": "East Lower Norfair",
+   "index": 66,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 495408,
+   "room": "Mickey Mouse Room",
+   "room_id": 144
+  },
+  {
+   "area": "East Lower Norfair",
+   "index": 67,
+   "node": "Firefleas Item",
+   "node_id": 4,
+   "plm_addr": 496004,
+   "room": "Lower Norfair Fireflea Room",
+   "room_id": 145
+  },
+  {
+   "area": "East Lower Norfair",
+   "index": 68,
+   "node": "Item",
+   "node_id": 4,
+   "plm_addr": 495562,
+   "room": "Lower Norfair Spring Ball Maze",
+   "room_id": 146
+  },
+  {
+   "area": "East Lower Norfair",
+   "index": 69,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 495570,
+   "room": "The Jail",
+   "room_id": 147
+  },
+  {
+   "area": "East Lower Norfair",
+   "index": 70,
+   "node": "Hidden Item",
+   "node_id": 3,
+   "plm_addr": 495872,
+   "room": "Three Musketeers' Room",
+   "room_id": 148
+  },
+  {
+   "area": "West Lower Norfair",
+   "index": 71,
+   "node": "Top Left Item",
+   "node_id": 3,
+   "plm_addr": 495214,
+   "room": "Golden Torizo's Room",
+   "room_id": 150
+  },
+  {
+   "area": "West Lower Norfair",
+   "index": 72,
+   "node": "Hidden Right Item",
+   "node_id": 4,
+   "plm_addr": 495220,
+   "room": "Golden Torizo's Room",
+   "room_id": 150
+  },
+  {
+   "area": "West Lower Norfair",
+   "index": 73,
+   "node": "Item",
+   "node_id": 4,
+   "plm_addr": 495888,
+   "room": "Screw Attack Room",
+   "room_id": 151
+  },
+  {
+   "area": "Wrecked Ship",
+   "index": 74,
+   "node": "Item",
+   "node_id": 8,
+   "plm_addr": 508517,
+   "room": "Wrecked Ship Main Shaft",
+   "room_id": 155
+  },
+  {
+   "area": "Wrecked Ship",
+   "index": 75,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 508759,
+   "room": "Wrecked Ship West Super Room",
+   "room_id": 159
+  },
+  {
+   "area": "Wrecked Ship",
+   "index": 76,
+   "node": "Bottom Chozo Item",
+   "node_id": 4,
+   "plm_addr": 508655,
+   "room": "Bowling Alley",
+   "room_id": 161
+  },
+  {
+   "area": "Wrecked Ship",
+   "index": 77,
+   "node": "Top Right Item",
+   "node_id": 5,
+   "plm_addr": 508649,
+   "room": "Bowling Alley",
+   "room_id": 161
+  },
+  {
+   "area": "Wrecked Ship",
+   "index": 78,
+   "node": "Item",
+   "node_id": 3,
+   "plm_addr": 508781,
+   "room": "Gravity Suit Room",
+   "room_id": 162
+  },
+  {
+   "area": "Wrecked Ship",
+   "index": 79,
+   "node": "Item (Behind the Bomb Wall)",
+   "node_id": 2,
+   "plm_addr": 508773,
+   "room": "Wrecked Ship East Super Room",
+   "room_id": 163
+  },
+  {
+   "area": "Wrecked Ship",
+   "index": 80,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 508727,
+   "room": "Wrecked Ship Energy Tank Room",
+   "room_id": 167
+  },
+  {
+   "area": "Wrecked Ship",
+   "index": 81,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 508697,
+   "room": "Robot Assembly Line",
+   "room_id": 168
+  },
+  {
+   "area": "Outer Maridia",
+   "index": 82,
+   "node": "Speed Blocked Item",
+   "node_id": 6,
+   "plm_addr": 508983,
+   "room": "Main Street",
+   "room_id": 172
+  },
+  {
+   "area": "Outer Maridia",
+   "index": 83,
+   "node": "Morph Tunnel Item",
+   "node_id": 7,
+   "plm_addr": 508989,
+   "room": "Main Street",
+   "room_id": 172
+  },
+  {
+   "area": "Outer Maridia",
+   "index": 84,
+   "node": "Top Item",
+   "node_id": 2,
+   "plm_addr": 509053,
+   "room": "Mama Turtle Room",
+   "room_id": 178
+  },
+  {
+   "area": "Outer Maridia",
+   "index": 85,
+   "node": "Hidden Right Item",
+   "node_id": 3,
+   "plm_addr": 509059,
+   "room": "Mama Turtle Room",
+   "room_id": 178
+  },
+  {
+   "area": "Yellow Inner Maridia",
+   "index": 86,
+   "node": "Hidden Item",
+   "node_id": 3,
+   "plm_addr": 509235,
+   "room": "The Beach",
+   "room_id": 179
+  },
+  {
+   "area": "Yellow Inner Maridia",
+   "index": 87,
+   "node": "Left Item",
+   "node_id": 2,
+   "plm_addr": 509103,
+   "room": "Watering Hole",
+   "room_id": 181
+  },
+  {
+   "area": "Yellow Inner Maridia",
+   "index": 88,
+   "node": "Right Item",
+   "node_id": 3,
+   "plm_addr": 509109,
+   "room": "Watering Hole",
+   "room_id": 181
+  },
+  {
+   "area": "Pink Inner Maridia",
+   "index": 89,
+   "node": "Top Right Left Item",
+   "node_id": 7,
+   "plm_addr": 509443,
+   "room": "Aqueduct",
+   "room_id": 183
+  },
+  {
+   "area": "Pink Inner Maridia",
+   "index": 90,
+   "node": "Top Right Right Item",
+   "node_id": 8,
+   "plm_addr": 509449,
+   "room": "Aqueduct",
+   "room_id": 183
+  },
+  {
+   "area": "Pink Inner Maridia",
+   "index": 91,
+   "node": "Item",
+   "node_id": 5,
+   "plm_addr": 509781,
+   "room": "Botwoon Energy Tank Room",
+   "room_id": 186
+  },
+  {
+   "area": "Pink Inner Maridia",
+   "index": 92,
+   "node": "Top Right Hidden Item",
+   "node_id": 3,
+   "plm_addr": 509773,
+   "room": "The Precious Room",
+   "room_id": 192
+  },
+  {
+   "area": "Pink Inner Maridia",
+   "index": 93,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 509863,
+   "room": "Space Jump Room",
+   "room_id": 194
+  },
+  {
+   "area": "Pink Inner Maridia",
+   "index": 94,
+   "node": "Top Left Item",
+   "node_id": 3,
+   "plm_addr": 509419,
+   "room": "East Sand Pit",
+   "room_id": 208
+  },
+  {
+   "area": "Pink Inner Maridia",
+   "index": 95,
+   "node": "Right Item",
+   "node_id": 4,
+   "plm_addr": 509425,
+   "room": "East Sand Pit",
+   "room_id": 208
+  },
+  {
+   "area": "Pink Inner Maridia",
+   "index": 96,
+   "node": "Top Left - Left Item",
+   "node_id": 3,
+   "plm_addr": 509405,
+   "room": "West Sand Pit",
+   "room_id": 209
+  },
+  {
+   "area": "Pink Inner Maridia",
+   "index": 97,
+   "node": "Top Left - Right Item",
+   "node_id": 4,
+   "plm_addr": 509411,
+   "room": "West Sand Pit",
+   "room_id": 209
+  },
+  {
+   "area": "Yellow Inner Maridia",
+   "index": 98,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 509273,
+   "room": "Plasma Room",
+   "room_id": 219
+  },
+  {
+   "area": "Green Inner Maridia",
+   "index": 99,
+   "node": "Item",
+   "node_id": 2,
+   "plm_addr": 509669,
+   "room": "Spring Ball Room",
+   "room_id": 223
+  }
+ ],
+ "items": [
+  "ETank",
+  "Missile",
+  "Super",
+  "PowerBomb",
+  "Bombs",
+  "Charge",
+  "Ice",
+  "HiJump",
+  "SpeedBooster",
+  "Wave",
+  "Spazer",
+  "SpringBall",
+  "Varia",
+  "Gravity",
+  "XRayScope",
+  "Plasma",
+  "Grapple",
+  "SpaceJump",
+  "ScrewAttack",
+  "Morph",
+  "ReserveTank",
+  "WallJump",
+  "Nothing",
+  "SparkBooster",
+  "BlueBooster"
+ ],
+ "version": 123
+}
