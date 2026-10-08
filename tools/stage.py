@@ -14,9 +14,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "world"))
+sys.path.insert(0, str(ROOT / "world" / "smmr"))   # `core` alone: importing `smmr` needs Archipelago
 
-from smmr.core.engine import SubprocessEngine  # noqa: E402
+from core.engine import SubprocessEngine  # noqa: E402
 
 
 def default_engine() -> SubprocessEngine:
