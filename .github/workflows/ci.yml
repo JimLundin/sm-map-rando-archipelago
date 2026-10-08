@@ -1,0 +1,54 @@
+# One job per layer, as the local loops (Makefile): core (seconds), engine + generated data, the World in Archipelago.
+name: ci
+on: [push, pull_request]
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install pytest
+      - run: make test-core
+
+  engine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Map Rando and the submodules the engine needs
+        run: |
+          git submodule update --init MapRandomizer
+          git -C MapRandomizer submodule update --init sm-json-data rust/lznint asar
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install pytest backports.zstd cmake
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: engine }
+      - run: make engine asar mw fetch
+      - name: Generated files are up to date
+        run: |
+          make data
+          git diff --exit-code world/smmr/data
+      - run: python -m pytest -q tests/engine
+      - uses: actions/upload-artifact@v4
+        with: { name: engine-linux, path: engine/target/dev-release/smmr-engine }
+
+  world:
+    needs: engine
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          git submodule update --init MapRandomizer
+          git -C MapRandomizer submodule update --init sm-json-data rust/lznint
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - uses: actions/download-artifact@v4
+        with: { name: engine-linux, path: engine/target/dev-release }
+      - run: chmod +x engine/target/dev-release/smmr-engine && pip install backports.zstd && python tools/fetch_data.py
+      - name: Archipelago
+        run: |
+          git clone --depth 1 https://github.com/ArchipelagoMW/Archipelago.git ../Archipelago
+          pip install -r ../Archipelago/requirements.txt pytest
+      - run: make test-ap AP=../Archipelago PY=python

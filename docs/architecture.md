@@ -1,111 +1,115 @@
-# Architecture (rewrite)
+# Architecture
 
-A ground-up rewrite of the Super Metroid Map Rando Archipelago world. It contains no code from lordlou's
-world, lordlou's `pysmmaprando` binding, or SMBasepatch. Its only upstream is Map Rando (blkerby/MapRandomizer,
-MIT), used **unmodified**, plus Archipelago's public World/SNI APIs.
+The Super Metroid Map Rando world for Archipelago, rebuilt from the ground up. It has no code from lordlou's world,
+lordlou's `pysmmaprando` binding or SMBasepatch (ADR 0001). Its upstream is Map Rando (blkerby/MapRandomizer, MIT),
+used **unmodified** (ADR 0002), plus Archipelago's public World and SNI client APIs.
 
 ## Principles
 
-1. **Stages with file boundaries.** Generation is a pipeline of stages. Each stage is a function from one
-   serializable artifact to the next. Any artifact can be dumped to JSON, and any later stage can be re-run
-   from it alone.
-2. **Map Rando is a black box.** We call the upstream crate the way its own CLI does, from our own binary.
-   We don't patch it. Our multiworld layer is applied *on top of* the ROM Map Rando produces.
-3. **One owner per fact.** The ROM ABI (addresses, table formats, item ids) is written once, in `mw/abi.toml`.
-   It is generated into asm defines and a Python module.
-4. **A pure core.** `core/` doesn't import Archipelago, the engine, or a ROM. The AP World is a thin adapter.
-5. **A fast loop per layer.** Each layer has its own seconds-long edit→test loop. The slow, everything-together
-   test only runs before a release.
+1. **Stages with artifact boundaries.** Generation is a pipeline of stages. Each stage is a function from one
+   serializable artifact to the next. Any artifact can be dumped to JSON, and any later stage re-run from it alone
+   (`tools/stage.py`).
+2. **Map Rando is a black box.** Our own engine binary calls the upstream crate the way Map Rando's website does.
+   Our multiworld layer goes *on top of* the ROM Map Rando produces.
+3. **One owner per fact.** The ROM ABI is `world/smmr/data/abi.toml` only: the asm defines and the Python codecs are
+   generated from it. Item locations, preset names and map pools come from the engine's `info`.
+4. **A pure core.** `world/smmr/core/` imports only the standard library (a test enforces this). The AP World, the
+   patch procedure and the SNI client are thin adapters around core stages.
+5. **A fast loop per layer.** Each layer has a seconds-long edit→test loop. Everything together runs before a
+   release (`make e2e`).
 
 ## Diagram
 
 ```
-                         ┌──────────────────────── Archipelago (generation) ────────────────────────┐
-                         │                                                                           │
-  player YAML ──► [S1] options ──► RandoSettings.json                                                │
-                         │              │                                                             │
-                         │              ▼                                                             │
-                         │   ┌─────────────────────┐   subprocess, JSON stdin/stdout                  │
-                         │   │ [S2] engine          │◄──────────────────────────────┐                 │
-                         │   │  `smmr-engine        │                               │                 │
-                         │   │   randomize`         │──► Seed.json                  │                 │
-                         │   └─────────────────────┘   (map, doors, objectives,    │                 │
-                         │                              placement, spoiler steps)  │                 │
-                         │              │                                           │                 │
-                         │              ▼                                           │                 │
-                         │   [S3] logic: Seed ──► LogicModel (regions, step reqs)    │                 │
-                         │              │                                           │                 │
-                         │              ▼                                           │                 │
-                         │   AP fill (multiworld) ──► Placement (per location:      │                 │
-                         │              │               item, receiver, class)      │                 │
-                         │              ▼                                           │                 │
-                         │   [S4] mwplan: Seed + Placement ──► MwPlan               │                 │
-                         │              │     (vanilla-item placement for map icons,│                 │
-                         │              │      per-location table rows, players)    │                 │
-                         │              ▼                                           │                 │
-                         │   .apsmmr patch = { RandoSettings, Seed, MwPlan, rom_name }                 │
-                         └──────────────┼───────────────────────────────────────────┼─────────────────┘
-                                        │                                           │
-                         ┌──────────────▼─────────── Patching (player's machine) ───┼─────────────────┐
-                         │   [S5a] `smmr-engine rom`: vanilla ROM + Seed ──► MR ROM ┘                 │
-                         │   [S5b] mw: MR ROM + mw.ips + encode(MwPlan) ──► final ROM                  │
-                         │          (rewrites the 100 item PLMs to our MW PLMs)                        │
-                         └──────────────┬─────────────────────────────────────────────────────────────┘
-                                        │ SNES (emulator / hardware)
-                         ┌──────────────▼──────────── Play ───────────────────────────────────────────┐
-                         │   ROM  ◄── SNI ──►  [S6] client (core.abi codecs) ◄──► AP server            │
-                         │   writes: collected-location bits    reads: receive queue head/tail        │
-                         └────────────────────────────────────────────────────────────────────────────┘
+ GENERATION (Archipelago, world/smmr/__init__.py)                                       artifacts
+ ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  player YAML ─► options.py (data-driven Choices) ─► [S1 core.options] ──────────────────► settings (pre-upgrade)
+                                                           │
+                         ┌──────────────── engine port (core.engine) ───────────────┐
+                         │  smmr-engine serve  (Rust, upstream Map Rando unmodified) │
+                         │    upgrade · randomize · rom · info      JSON lines       │
+                         └───────────────────────────────────────────────────────────┘
+                                                           │ upgrade ─────────────────► RandoSettings
+                                                           │ randomize ───────────────► Seed (map, doors,
+                                                           ▼                             placement, steps)
+                                              [S3 core.logic] ────────────────────────► LogicModel (step
+                                                           │                             regions, pool)
+                                              AP fill (+ fill_hook step order,
+                                                 bottleneck steps kept local)
+                                                           ▼
+                                              [S4 core.mwplan] ───────────────────────► MwPlan (what each
+                                                           │                             location shows)
+                                                           ▼
+                                              .apsmmr = smmr.json {settings, randomization, rom_name}
 
-  Single source of the ROM ABI:
-        mw/abi.toml ──gen──► mw/build/abi.asm  (asar defines)
-                    └─gen──► world/smmr/core/abi_gen.py (addresses, struct layouts, codecs use it)
+ PATCHING (player's machine, patch.py)
+ ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  vanilla ROM ─► [S5a engine rom] ─► Map Rando ROM ─► [S5b core.mwpatch] ─► ROM
+                                                       mw.ips (our asm) + ABI header + bit→location table + name
+
+ PLAY
+ ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  ROM ◄── SNI ──► client.py ──► [S6 core.sync] ──► AP server
+   │ collected-item bits $7E:D870   (send: any pickup sets them; others' items are Map Rando "Nothing")
+   │ mailbox $7E:F5A0 ◄─ client      (receive: the tick spawns the item's own Map Rando PLM on Samus)
+   │ received count $7E:FE94 ─► client (saved with the save file)
+
+ SINGLE SOURCES
+ ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  data/abi.toml ──► tools/build_mw.py ──► mw/build/abi.asm ──► mw/mw.asm ──► data/mw.ips
+              └───► core/abi.py (patcher and client codecs)
+  engine info ───► data/info.json (locations, items, category presets, map pools)
+  Map Rando presets ─► data/presets.json ─► the options
 ```
 
-### Layers and code ownership
+## Layers and code ownership
 
 ```
- ┌────────────────────────────────────────────────────────────────────────────┐
- │ world/smmr/            the .apworld package                                  │
- │   __init__.py, world.py   AP adapter: AP hooks → core stages (thin)          │
- │   client.py               SNI adapter: SNI I/O → core.abi codecs (thin)      │
- │   patch.py                APProcedurePatch: runs S5a + S5b                   │
- │   core/   (pure, no AP / no I/O except via ports)                             │
- │     options.py   S1   options values → RandoSettings                          │
- │     logic.py     S3   Seed → LogicModel                                       │
- │     mwplan.py    S4   Seed + Placement → MwPlan                               │
- │     abi.py       ABI codecs (tables, queue entries, location bits)            │
- │     engine.py    Engine port: randomize(), rom()  + SubprocessEngine          │
- │     model.py     dataclasses for the artifacts (to/from JSON)                 │
- ├────────────────────────────────────────────────────────────────────────────┤
- │ engine/        Rust bin `smmr-engine` (path dep on MapRandomizer, unmodified)│
- │   randomize: RandoSettings + seed → Seed       rom: ROM + Seed → MR ROM      │
- │   info: item/location/preset tables (to generate options and fixtures)       │
- ├────────────────────────────────────────────────────────────────────────────┤
- │ mw/            our own 65816 multiworld patch (asar) + abi.toml              │
- ├────────────────────────────────────────────────────────────────────────────┤
- │ tools/         build (Makefile targets), fixture recorder, emulator harness  │
- └────────────────────────────────────────────────────────────────────────────┘
+ world/smmr/                    the .apworld package
+   __init__.py                  AP World: hooks → core stages
+   options.py                   AP options, built from Map Rando's presets when the world loads
+   patch.py                     APProcedurePatch: S5a + S5b
+   client.py                    SNI client: SNI I/O around core.sync
+   runtime.py                   finds/extracts the engine and data; downloads map pools (fetch.py)
+   core/                        pure, standard library only
+     options.py   S1            option values → Map Rando settings
+     engine.py    port          Engine protocol + SubprocessEngine (one `serve` process)
+     catalog.py                 items and item locations, names and ids
+     logic.py     S3            Seed → LogicModel; bottleneck steps
+     mwplan.py    S4            AP placement → Map Rando item placement
+     mwpatch.py   S5b           Map Rando ROM → multiworld ROM
+     abi.py, ips.py             ROM ABI codecs, IPS
+     sync.py      S6            memory snapshot → client actions
+   data/                        abi.toml, mw.ips, info.json, presets.json (generated, committed)
+ engine/                        Rust: smmr-engine (path dependency on MapRandomizer/, unmodified)
+ mw/                            our 65816 asm (asar)
+ tools/                         stage runner, builds, emulator harness, fixture recording, e2e
+ tests/core  tests/engine  tests/rom      per-layer tests; world/smmr/test runs inside Archipelago
 ```
 
 ## Iteration loops
 
-| Layer | Edit → feedback | Command |
+| Layer | Feedback | Command |
 |---|---|---|
-| core stages | < 2 s, no AP, no Rust: recorded `Seed` fixtures | `make test-core` |
-| engine | incremental `cargo build`, then run one stage from a JSON file | `make engine && tools/run-stage randomize fixtures/settings/basic.json` |
-| mw asm | assemble < 1 s; emulator scenario tests with a ROM | `make mw && make test-mw` |
-| AP World | symlink into an Archipelago checkout, generation tests | `make test-ap` |
-| full | build the .apworld; generate, patch and boot in the emulator | `make e2e` (before a release) |
+| core stages | ~0.1 s, no AP, no Rust: recorded Seed fixture | `make test-core` |
+| engine | incremental build; any stage from JSON files; engine tests ~2 s | `make engine`, `tools/stage.py …`, `pytest tests/engine` |
+| mw asm | assemble < 1 s; ROM scenarios in a headless emulator ~3 s | `make mw test-rom ROM=…` |
+| AP World | generation, fill, multiworld in an Archipelago checkout ~45 s | `make test-ap` |
+| full | build the .apworld, generate, patch, boot | `make e2e ROM=…` |
 
-## Milestones (each one a short, mergeable vertical slice)
+## Decisions
 
-1. **Skeleton**: layout, Makefile, the core import guard, artifact dataclasses, docs/ADRs.
-2. **Engine `randomize` + `rom`**: settings → Seed → ROM from the CLI. Record fixtures.
-3. **Solo world, Map Rando items**: S1 (fixed preset), S3, AP generation, patch = engine `rom` only.
-   It's playable as a 1-player AP seed, with no client yet.
-4. **MW ABI + patch, own items**: abi.toml, the PLM rewrite, per-location table, pickup → collected bits.
-   The emulator test picks up an item.
-5. **Off-world items + client**: send/receive queue, message boxes, player names, SNI client.
-6. **Options**: generated from Map Rando's settings schema and presets (via `engine info`).
-7. **Extras**: shared maps, death link, hints, credits, CI release.
+- [ADR 0001](adr/0001-clean-room-rewrite.md): a clean-room rewrite, with no code from lordlou's world, binding or
+  basepatch.
+- [ADR 0002](adr/0002-engine-subprocess.md): the engine is our own binary over unmodified Map Rando, behind JSON.
+- [ADR 0003](adr/0003-multiworld-on-map-rando-plms.md): send through Nothing items, receive by spawning the item's
+  own PLM.
+- [ADR 0004](adr/0004-step-logic.md): logic from Map Rando's placement steps, with narrow steps kept local.
+
+## Not done yet
+
+- Customization (sprite, palettes, music, controller): the ROM uses Map Rando's defaults.
+- Off-world items are Map Rando's Nothing item (drawn as Map Rando draws Nothing), with no "sent X to Y" message,
+  and received items show only their own message box.
+- Shared maps across worlds, death link, hint area data and item credits.
+- Engine builds for platforms other than this machine's (CI matrix), and release automation.
