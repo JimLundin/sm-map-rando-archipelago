@@ -1,6 +1,6 @@
 # 0004: Logic from Map Rando's placement steps, narrow steps kept local
 
-Status: accepted (2026-10)
+Status: superseded by ADR 0006 (2026-10)
 
 ## Context
 

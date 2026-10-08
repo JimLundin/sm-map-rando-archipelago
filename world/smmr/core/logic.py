@@ -1,85 +1,72 @@
-"""Stage S3: a Seed's logic, as Archipelago-shaped data.
+"""Stage S3: the logic, Map Rando's own, through the engine's `reach` (docs/specs/logic-oracle.md).
 
-Map Rando's spoiler summary lists the steps in which its item placement collected items. The locations of step *k*
-are reachable with every item collected in steps 1..k-1 (that is how Map Rando placed them), so step *k* becomes a
-region requiring those items. The rule is sound by construction, and it needs nothing from Map Rando's logic itself.
-
-Locations Map Rando didn't place progression in (after "stop item placement early", or with an escape start) are in
-a final region requiring everything, and only get filler.
+A location's rule asks the oracle what the items of ours collected so far (with the starting items) make reachable:
+the oracle runs Map Rando's traversal, and answers are cached by the items' counts. How it answers is the engine's
+business: a fresh traversal per inventory for now.
 """
 from __future__ import annotations
 
-from collections import Counter
-from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Tuple
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
+from enum import StrEnum
+from typing import TypeAlias
 
 from .catalog import Catalog
 
-PROGRESSION, USEFUL, FILLER = "progression", "useful", "filler"
+Inventory: TypeAlias = Mapping[str, int]                  # Map Rando item name → count
+InventoryKey: TypeAlias = tuple[tuple[str, int], ...]
 
 
-@dataclass(frozen=True)
-class Step:
-    number: int
-    locations: Tuple[int, ...]       # item location indexes
-    requires: Mapping[str, int]      # Archipelago item name → count, of our own items
+class Classification(StrEnum):
+    PROGRESSION = "progression"
+    PROGRESSION_SKIP_BALANCING = "progression_skip_balancing"   # tanks and ammo: the logic counts them
+    USEFUL = "useful"
+    FILLER = "filler"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
+class Reach:
+    locations: frozenset[int]        # item location indexes Samus can reach and come back from
+    beatable: bool                   # Mother Brain can be defeated
+
+
+Query: TypeAlias = Callable[[Sequence[Inventory]], list[Reach]]
+
+
+@dataclass(slots=True)
+class Oracle:
+    """What our collected items make reachable. `query` answers a batch of inventories, e.g. the engine's `reach`
+    with a session."""
+    query: Query
+    _cache: dict[InventoryKey, Reach] = field(default_factory=dict[InventoryKey, Reach])
+    queries: int = 0
+
+    def reach(self, counts: Inventory) -> Reach:
+        key = tuple(sorted((item, count) for item, count in counts.items() if count))
+        reach = self._cache.get(key)
+        if reach is None:
+            self.queries += 1
+            [reach] = self.query([dict(key)])
+            self._cache[key] = reach
+        return reach
+
+
+@dataclass(frozen=True, slots=True)
 class PoolItem:
-    name: str
-    classification: str
-    step: int                        # the step whose locations Map Rando put it in (len(steps) + 1: none)
+    name: str                        # Archipelago name
+    classification: Classification
 
 
-@dataclass(frozen=True)
-class LogicModel:
-    steps: Tuple[Step, ...]
-    remaining: Step                  # locations outside the steps; excluded from progression when there are steps
-    pool: Tuple[PoolItem, ...]       # one item per item location, in location index order
+def classify(rando_name: str, catalog: Catalog) -> Classification:
+    """Every item the logic knows is progression (it counts tanks and ammo too); Nothing is filler."""
+    if rando_name == "Nothing":
+        return Classification.FILLER
+    if catalog.item(rando_name).unique:
+        return Classification.PROGRESSION
+    return Classification.PROGRESSION_SKIP_BALANCING
 
 
-def bottleneck_locations(logic: LogicModel, max_locations: int = 5) -> List[int]:
-    """The locations of the steps with fewer than `max_locations` locations, which keep Map Rando's own items.
-
-    Every step requires all items of the earlier steps, so a step with few locations is a bottleneck: if another
-    world's item takes one of them, the fill may find no place for ours. Map Rando's own placement there is known
-    to work (the pool is in location order, so location i keeps pool item i)."""
-    return [index for step in logic.steps if len(step.locations) < max_locations for index in step.locations]
-
-
-def build_logic(seed: Mapping[str, Any], catalog: Catalog) -> LogicModel:
-    summary: List[Dict[str, Any]] = [step for step in seed["spoiler"]["summary"] if step["items"]]
-    placement: List[str] = seed["randomization"]["item_placement"]
-
-    steps = []
-    step_of: Dict[int, int] = {}
-    collected: Counter = Counter()
-    for number, step in enumerate(summary, start=1):
-        locations = []
-        for entry in step["items"]:
-            location = catalog.location_at(entry["location"]["room_id"], entry["location"]["node_id"])
-            locations.append(location.index)
-            step_of[location.index] = number
-        steps.append(Step(number, tuple(locations), dict(collected)))
-        for entry in step["items"]:
-            if entry["item"] != "Nothing":
-                collected[catalog.item(entry["item"]).name] += 1
-
-    final = len(steps) + 1
-    remaining = Step(final, tuple(loc.index for loc in catalog.locations if loc.index not in step_of),
-                     dict(collected))
-
-    pool = []
-    for location in catalog.locations:
-        kind = catalog.item(placement[location.index])
-        if kind.rando_name == "Nothing":
-            classification = FILLER
-        elif location.index in step_of:
-            classification = PROGRESSION
-        elif not steps and (kind.unique or kind.rando_name in ("ETank", "ReserveTank")):
-            classification = USEFUL   # escape start: nothing is needed, but upgrades are still worth having
-        else:
-            classification = FILLER   # placed outside Map Rando's logic: only filler locations can take it
-        pool.append(PoolItem(kind.name, classification, step_of.get(location.index, final)))
-    return LogicModel(tuple(steps), remaining, tuple(pool))
+def item_pool(pool: Mapping[str, int], catalog: Catalog) -> list[PoolItem]:
+    """The items Map Rando would place (the engine's `world` pool)."""
+    return [PoolItem(catalog.item(rando_name).name, classify(rando_name, catalog))
+            for rando_name, count in pool.items() for _ in range(count)]

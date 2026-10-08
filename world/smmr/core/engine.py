@@ -13,9 +13,31 @@ import sys
 import tempfile
 import threading
 from pathlib import Path
-from typing import IO, Any, Dict, Mapping, Optional, Protocol
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from typing import IO, Any, Dict, Optional, Protocol, Self, TypeAlias
+
+from .logic import Inventory, Reach
 
 RESPONSE = b"\x1e"
+
+JsonObject: TypeAlias = dict[str, Any]      # Map Rando's own data (settings, a world): only the engine reads it
+
+
+@dataclass(frozen=True, slots=True)
+class GeneratedWorld:
+    """The engine's `world`: everything but the item placement."""
+    world: JsonObject                        # given back to the engine as it is (`open`, `rom`)
+    seed_hash: str
+    pool: dict[str, int]                     # the items to place: Map Rando item name → count
+    locations: list[int]                     # the item locations in the map's rooms
+    starting_items: dict[str, int]
+    escape: bool                             # Samus starts in the escape with every item: nothing to place
+
+    @classmethod
+    def from_json(cls, data: Mapping[str, Any]) -> Self:
+        return cls(data["world"], data["seed_hash"], dict(data["pool"]), list(data["locations"]),
+                   {item: count for item, count in data["starting_items"].items() if count}, data["escape"])
 
 
 def platform_tag() -> str:
@@ -34,7 +56,16 @@ class Engine(Protocol):
 
     def randomize(self, settings: Mapping[str, Any], seed: int) -> Dict[str, Any]: ...
 
+    def world(self, settings: Mapping[str, Any], seed: int) -> GeneratedWorld: ...
+
+    def open(self, settings: Mapping[str, Any], world: JsonObject) -> int: ...
+
+    def reach(self, session: int, inventories: Sequence[Inventory]) -> list[Reach]: ...
+
     def rom(self, settings: Mapping[str, Any], randomization: Mapping[str, Any], rom: Path, out: Path) -> None: ...
+
+    def rom_from_world(self, settings: Mapping[str, Any], world: JsonObject, item_placement: Sequence[str],
+                       foreign_items: Sequence[Mapping[str, Any]], rom: Path, out: Path) -> None: ...
 
 
 class SubprocessEngine:
@@ -42,11 +73,11 @@ class SubprocessEngine:
         self.binary = Path(binary)
         self.data_dir = Path(data_dir)
         self.maps_dir = maps_dir
-        self._process: Optional[subprocess.Popen] = None
+        self._process: Optional[subprocess.Popen[bytes]] = None
         self._stderr: Optional[IO[bytes]] = None
         self._lock = threading.Lock()
 
-    def _start(self) -> subprocess.Popen:
+    def _start(self) -> subprocess.Popen[bytes]:
         if self._process is None or self._process.poll() is not None:
             self._stderr = tempfile.TemporaryFile()
             self._process = subprocess.Popen([str(self.binary), "--data", str(self.data_dir.resolve()), "serve"],
@@ -92,11 +123,31 @@ class SubprocessEngine:
         return self.call("upgrade", {"settings": settings})["settings"]
 
     def randomize(self, settings: Mapping[str, Any], seed: int) -> Dict[str, Any]:
-        request: Dict[str, Any] = {"settings": settings, "seed": seed}
+        return self.call("randomize", self._with_maps({"settings": settings, "seed": seed}))
+
+    def world(self, settings: Mapping[str, Any], seed: int) -> GeneratedWorld:
+        return GeneratedWorld.from_json(self.call("world", self._with_maps({"settings": settings, "seed": seed})))
+
+    def open(self, settings: Mapping[str, Any], world: JsonObject) -> int:
+        """Sets up the world's logic in the engine process, for `reach`."""
+        return self.call("open", {"settings": settings, "world": world})["session"]
+
+    def reach(self, session: int, inventories: Sequence[Inventory]) -> list[Reach]:
+        """For each inventory (on top of the starting items), what it makes reachable."""
+        answers = self.call("reach", {"session": session, "inventories": [dict(x) for x in inventories]})
+        return [Reach(frozenset(answer["locations"]), answer["beatable"]) for answer in answers]
+
+    def _with_maps(self, request: Dict[str, Any]) -> Dict[str, Any]:
         if self.maps_dir is not None:
             request["maps_dir"] = str(Path(self.maps_dir).resolve())
-        return self.call("randomize", request)
+        return request
 
     def rom(self, settings: Mapping[str, Any], randomization: Mapping[str, Any], rom: Path, out: Path) -> None:
         self.call("rom", {"settings": settings, "randomization": randomization,
+                          "rom": str(Path(rom).resolve()), "out": str(Path(out).resolve())})
+
+    def rom_from_world(self, settings: Mapping[str, Any], world: JsonObject, item_placement: Sequence[str],
+                       foreign_items: Sequence[Mapping[str, Any]], rom: Path, out: Path) -> None:
+        self.call("rom", {"settings": settings, "world": world, "item_placement": list(item_placement),
+                          "foreign_items": list(foreign_items),
                           "rom": str(Path(rom).resolve()), "out": str(Path(out).resolve())})

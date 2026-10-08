@@ -12,6 +12,8 @@
 //! - `world`: `{settings, seed, maps_dir?}` → `{world, seed_hash}`: everything but the item placement (`world.rs`)
 //! - `reach`: `{settings, world, inventories: [{item: count}]}` → `[{locations, one_way, flags, beatable}]`: what each
 //!   set of collected items (on top of the starting items) makes reachable
+//! - `open`: `{settings, world}` → `{session}`, then `reach` with `{session, inventories}`: the world's logic set up
+//!   once (in `serve`), for many queries
 //! - `rom`: `{settings, randomization, rom, out}` or `{settings, world, item_placement, foreign_items, rom, out}` → `{}`;
 //!   writes Map Rando's ROM to `out`
 //!
@@ -54,6 +56,14 @@ const MAP_POOLS: [(&str, &str); 3] = [
 struct Engine {
     game_data: GameData,
     preset_data: PresetData,
+    sessions: std::cell::RefCell<Vec<Session>>,
+}
+
+/// A world's logic, set up once for many `reach` queries. Its data lives as long as the process (`serve` serves one
+/// generation).
+struct Session {
+    world: &'static World,
+    randomizer: Randomizer<'static>,
 }
 
 impl Engine {
@@ -70,7 +80,7 @@ impl Engine {
         game_data.make_links_data(&|link, game_data| {
             get_link_difficulty_length(link, game_data, &preset_data, &global)
         });
-        Ok(Engine { game_data, preset_data })
+        Ok(Engine { game_data, preset_data, sessions: Default::default() })
     }
 
     fn info(&self) -> Result<Value> {
@@ -222,9 +232,6 @@ impl Engine {
     /// checked to be a world items can be placed in (`world::check`).
     fn world(&self, req: &Value) -> Result<Value> {
         let settings = parse_settings(req)?;
-        if settings.start_location_settings.mode == StartLocationMode::Escape {
-            bail!("the escape start has no item placement (not supported yet)");
-        }
         let random_seed = req["seed"].as_u64().context("seed must be an unsigned integer")? as usize;
         let maps_dir = req["maps_dir"].as_str().map(PathBuf::from);
         let repository = self.map_repository(maps_dir.as_deref())?;
@@ -269,6 +276,38 @@ impl Engine {
                 &base_links_data,
                 &mut rng,
             );
+            if settings.start_location_settings.mode == StartLocationMode::Escape {
+                // Samus starts in the escape with every item: Map Rando places nothing (`dummy_randomize`).
+                let (randomization, _) = match randomizer.dummy_randomize(random_seed, random_seed, &mut rng) {
+                    Ok(x) => x,
+                    Err(e) => {
+                        last_error = format!("escape: {e}");
+                        continue;
+                    }
+                };
+                let start = randomization.start_location;
+                let locations = world::locations(&randomizer);
+                let world = World {
+                    map: map.clone(),
+                    locked_doors: locked_doors.locked_doors.clone(),
+                    objectives: objectives.clone(),
+                    hub: (start.room_id, start.node_id),
+                    start_location: start,
+                    save_animals: randomization.save_animals,
+                    escape_time_seconds: randomization.escape_time_seconds,
+                    toilet_intersections: randomizer.toilet_intersections.clone(),
+                    seed: random_seed,
+                    display_seed: random_seed,
+                };
+                return Ok(json!({
+                    "world": world,
+                    "seed_hash": seed_hash(random_seed),
+                    "pool": { "Nothing": locations.len() },
+                    "locations": locations,
+                    "starting_items": {},
+                    "escape": true,
+                }));
+            }
             for _ in 0..attempts_per_map {
                 attempt_num += 1;
                 // As Randomizer::randomize: traversers from the initial state, then the start location.
@@ -322,7 +361,21 @@ impl Engine {
                     display_seed: random_seed,
                 };
                 match world::check(&randomizer, &world) {
-                    Ok(()) => return Ok(json!({ "world": world, "seed_hash": seed_hash(random_seed) })),
+                    Ok(()) => {
+                        let pool = world::pool(&randomizer);
+                        return Ok(json!({
+                            "world": world,
+                            "seed_hash": seed_hash(random_seed),
+                            // The items to place, and where: the item locations in the map's rooms.
+                            "pool": pool.iter().map(|(item, count)| (format!("{item:?}"), json!(count)))
+                                .collect::<serde_json::Map<_, _>>(),
+                            "locations": world::locations(&randomizer),
+                            "starting_items": randomizer.starting_items.iter()
+                                .map(|x| (format!("{:?}", x.item), json!(x.count)))
+                                .collect::<serde_json::Map<_, _>>(),
+                            "escape": false,
+                        }));
+                    }
                     Err(e) => last_error = format!("[attempt {attempt_num}] {e}"),
                 }
             }
@@ -347,24 +400,41 @@ impl Engine {
         f(&randomizer)
     }
 
+    /// Sets up a world's logic for `reach {session, inventories}`.
+    fn open(&'static self, req: &Value) -> Result<Value> {
+        let settings: &'static RandomizerSettings = Box::leak(Box::new(parse_settings(req)?));
+        let world: &'static World =
+            Box::leak(Box::new(serde_json::from_value(req["world"].clone()).context("world")?));
+        let (difficulty_tiers, base_links_data) = self.rules(settings);
+        let difficulty_tiers: &'static [DifficultyConfig] = Box::leak(difficulty_tiers.into_boxed_slice());
+        let base_links_data: &'static LinksDataGroup = Box::leak(Box::new(base_links_data));
+        let locked_door_data = Box::leak(Box::new(make_locked_door_data(world.locked_doors.clone(), &self.game_data)));
+        let randomizer = Randomizer::new(
+            &world.map,
+            locked_door_data,
+            world.objectives.clone(),
+            settings,
+            difficulty_tiers,
+            &self.game_data,
+            base_links_data,
+            &mut seeded_rng(0),
+        );
+        let mut sessions = self.sessions.borrow_mut();
+        sessions.push(Session { world, randomizer });
+        Ok(json!({ "session": sessions.len() - 1 }))
+    }
+
     fn reach(&self, req: &Value) -> Result<Value> {
+        let inventories = parse_inventories(req)?;
+        if let Some(session) = req["session"].as_u64() {
+            let sessions = self.sessions.borrow();
+            let session = sessions.get(session as usize).context("no such session")?;
+            return Ok(json!(
+                inventories.iter().map(|x| world::reach(&session.randomizer, session.world, x)).collect::<Vec<_>>()
+            ));
+        }
         let settings = parse_settings(req)?;
         let world: World = serde_json::from_value(req["world"].clone()).context("world")?;
-        let inventories = req["inventories"].as_array().context("inventories must be a list")?;
-        let inventories: Vec<Vec<(Item, usize)>> = inventories
-            .iter()
-            .map(|inventory| {
-                let items = inventory.as_object().context("an inventory is an object {item: count}")?;
-                items
-                    .iter()
-                    .map(|(name, count)| {
-                        let item =
-                            Item::try_from(name.as_str()).map_err(|_| anyhow::anyhow!("unknown item {name}"))?;
-                        Ok((item, count.as_u64().context("an item count is an unsigned integer")? as usize))
-                    })
-                    .collect::<Result<Vec<_>>>()
-            })
-            .collect::<Result<_>>()?;
         let chain = req["chain"].as_bool().unwrap_or(false);
         self.with_randomizer(&settings, &world, |randomizer| {
             if chain {
@@ -412,6 +482,24 @@ impl Engine {
     }
 }
 
+/// `inventories`: a list of `{item: count}`.
+fn parse_inventories(req: &Value) -> Result<Vec<Vec<(Item, usize)>>> {
+    let inventories = req["inventories"].as_array().context("inventories must be a list")?;
+    inventories
+        .iter()
+        .map(|inventory| {
+            let items = inventory.as_object().context("an inventory is an object {item: count}")?;
+            items
+                .iter()
+                .map(|(name, count)| {
+                    let item = Item::try_from(name.as_str()).map_err(|_| anyhow::anyhow!("unknown item {name}"))?;
+                    Ok((item, count.as_u64().context("an item count is an unsigned integer")? as usize))
+                })
+                .collect::<Result<Vec<_>>>()
+        })
+        .collect()
+}
+
 fn parse_settings(req: &Value) -> Result<RandomizerSettings> {
     serde_json::from_value(req["settings"].clone())
         .context("settings are not upgraded Map Rando settings (run `upgrade` first)")
@@ -454,13 +542,14 @@ fn respond(result: Result<Value>) -> bool {
     ok
 }
 
-fn dispatch(engine: &Engine, command: &str, req: &Value) -> Result<Value> {
+fn dispatch(engine: &'static Engine, command: &str, req: &Value) -> Result<Value> {
     match command {
         "info" => engine.info(),
         "upgrade" => engine.upgrade(req),
         "randomize" => engine.randomize(req),
         "world" => engine.world(req),
         "reach" => engine.reach(req),
+        "open" => engine.open(req),
         "rom" => engine.rom(req),
         _ => bail!("unknown command {command}"),
     }
@@ -480,8 +569,8 @@ fn main() {
     let engine = std::env::set_current_dir(data.join("rust"))
         .with_context(|| format!("{} is not a Map Rando data directory", data.display()))
         .and_then(|_| Engine::load());
-    let engine = match engine {
-        Ok(engine) => engine,
+    let engine: &'static Engine = match engine {
+        Ok(engine) => Box::leak(Box::new(engine)),
         Err(e) => {
             respond(Err(e));
             std::process::exit(1);
@@ -493,7 +582,7 @@ fn main() {
             let Ok(line) = line else { break };
             let result = serde_json::from_str::<Value>(&line).map_err(anyhow::Error::from).and_then(|req| {
                 let command = req["command"].as_str().unwrap_or_default().to_string();
-                dispatch(&engine, &command, &req)
+                dispatch(engine, &command, &req)
             });
             respond(result);
         }
@@ -504,7 +593,7 @@ fn main() {
         .read_to_string(&mut input)
         .map_err(anyhow::Error::from)
         .and_then(|_| Ok(if input.trim().is_empty() { json!({}) } else { serde_json::from_str(&input)? }))
-        .and_then(|req| dispatch(&engine, &command, &req));
+        .and_then(|req| dispatch(engine, &command, &req));
     if !respond(result) {
         std::process::exit(1);
     }

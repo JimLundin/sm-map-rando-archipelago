@@ -28,20 +28,21 @@ client APIs.
                                                            │
                          ┌──────────────── engine port (core.engine) ───────────────┐
                          │  smmr-engine serve  (Rust, Map Rando: our fork)           │
-                         │    upgrade · randomize · rom · info      JSON lines       │
+                         │    upgrade · world · open · reach · rom · info  JSON lines │
                          └───────────────────────────────────────────────────────────┘
                                                            │ upgrade ─────────────────► RandoSettings
-                                                           │ randomize ───────────────► Seed (map, doors,
-                                                           ▼                             placement, steps)
-                                              [S3 core.logic] ────────────────────────► LogicModel (step
-                                                           │                             regions, pool)
-                                              AP fill (+ fill_hook step order,
-                                                 bottleneck steps kept local)
+                                                           │ world ───────────────────► GeneratedWorld (map, doors,
+                                                           │                             objectives, start; pool)
+                                                           ▼
+                                              [S3 core.logic] Oracle ◄── reach (session): Map Rando's traversal,
+                                                           │              per inventory of our items, cached
+                                              AP fill: every rule asks the Oracle
                                                            ▼
                                               [S4 core.mwplan] ───────────────────────► MwPlan (what each
                                                            │                             location shows)
                                                            ▼
-                                              .apsmmr = smmr.json {settings, randomization, rom_name}
+                                              .apsmmr = smmr.json {settings, world, item_placement,
+                                                                   foreign_items, rom_name}
 
  PATCHING (player's machine, patch.py)
  ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -76,7 +77,7 @@ client APIs.
      options.py   S1            option values → Map Rando settings
      engine.py    port          Engine protocol + SubprocessEngine (one `serve` process)
      catalog.py                 items and item locations, names and ids
-     logic.py     S3            Seed → LogicModel; bottleneck steps
+     logic.py     S3            the Oracle (rules from Map Rando's traversal); the item pool
      mwplan.py    S4            AP placement → Map Rando item placement
      mwpatch.py   S5b           Map Rando ROM → multiworld ROM
      abi.py, ips.py             ROM ABI codecs, IPS
@@ -105,9 +106,11 @@ client APIs.
 - [ADR 0002](adr/0002-engine-subprocess.md): the engine is our own binary over Map Rando, behind JSON.
 - [ADR 0003](adr/0003-multiworld-on-map-rando-plms.md): send through Nothing items (superseded by 0005), receive by
   spawning the item's own PLM.
-- [ADR 0004](adr/0004-step-logic.md): logic from Map Rando's placement steps, with narrow steps kept local.
+- [ADR 0004](adr/0004-step-logic.md): logic from Map Rando's placement steps (superseded by 0006).
 - [ADR 0005](adr/0005-foreign-items-in-our-map-rando-fork.md): other worlds' items are foreign items, in our fork
   of Map Rando.
+- [ADR 0006](adr/0006-logic-from-map-randos-traversal.md): logic from Map Rando's own traversal, asked from scratch
+  per inventory.
 
 ## Not done yet
 

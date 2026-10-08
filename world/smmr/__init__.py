@@ -7,33 +7,48 @@ import base64
 import json
 import os
 import threading
-from typing import Any, ClassVar, Dict, List
+from collections import Counter
+from typing import Any, ClassVar, assert_never
 
 import settings
-from BaseClasses import Item, ItemClassification, Location, LocationProgressType, Region
+from BaseClasses import CollectionState, Item, ItemClassification, Location, Region
 from Options import OptionError
 from worlds.AutoWorld import World
 
 from . import runtime
 from .client import SMMRClient  # noqa: F401 (registers the SNI client)
-from .core.engine import EngineError
-from .core.logic import FILLER, PROGRESSION, USEFUL, LogicModel, bottleneck_locations, build_logic
+from .core.engine import EngineError, GeneratedWorld
+from .core.logic import Classification, Oracle, item_pool
 from .core import mwpatch
-from .core.mwplan import PlacedItem, plan
+from .core.mwplan import OtherWorldItem, OwnItem, PlacedItem, plan
 from .core.options import build_settings
 from .options import SMMROptions, values
 from .patch import GAME, SM_JU_MD5, SMMRProcedurePatch
 
-CLASSIFICATIONS = {PROGRESSION: ItemClassification.progression, USEFUL: ItemClassification.useful,
-                   FILLER: ItemClassification.filler}
 _catalog = runtime.catalog()
+_rando_names = {item.name: item.rando_name for item in _catalog.items}
+EARLY_LOCATIONS = 4
 
 
-def classification(item: Item) -> str:
-    """An item's classification as core.logic names it (traps count as filler)."""
+def ap_classification(classification: Classification) -> ItemClassification:
+    match classification:
+        case Classification.PROGRESSION:
+            return ItemClassification.progression
+        case Classification.PROGRESSION_SKIP_BALANCING:
+            return ItemClassification.progression_skip_balancing
+        case Classification.USEFUL:
+            return ItemClassification.useful
+        case Classification.FILLER:
+            return ItemClassification.filler
+        case _:
+            assert_never(classification)
+
+
+def classification(item: Item) -> Classification:
+    """Another world's item's classification (traps count as filler)."""
     if item.advancement:
-        return PROGRESSION
-    return USEFUL if item.useful else FILLER
+        return Classification.PROGRESSION
+    return Classification.USEFUL if item.useful else Classification.FILLER
 
 
 class SMMRSettings(settings.Group):
@@ -48,12 +63,10 @@ class SMMRSettings(settings.Group):
 
 class SMMRItem(Item):
     game = GAME
-    step = 0   # the Map Rando step whose locations Map Rando put the item in (see core.logic)
 
 
 class SMMRLocation(Location):
     game = GAME
-    step = 0
 
 
 class SMMRWorld(World):
@@ -69,9 +82,9 @@ class SMMRWorld(World):
     item_name_to_id = {item.name: item.ap_id for item in _catalog.items}
     location_name_to_id = {loc.name: loc.ap_id for loc in _catalog.locations}
 
-    rando_settings: Dict[str, Any]
-    seed_artifact: Dict[str, Any]
-    logic: LogicModel
+    rando_settings: dict[str, Any]
+    world: GeneratedWorld
+    oracle: Oracle
 
     def __init__(self, multiworld, player: int):
         super().__init__(multiworld, player)
@@ -82,64 +95,78 @@ class SMMRWorld(World):
         option_values = values(self.options)
         runtime.ensure_map_pool(option_values.map_layout)
         settings_ = build_settings(runtime.full_presets(), option_values, self.random.getrandbits(32))
+        engine = runtime.engine()
         try:
-            self.rando_settings = runtime.engine().upgrade(settings_)
-            self.seed_artifact = runtime.engine().randomize(self.rando_settings, self.random.getrandbits(32))
+            self.rando_settings = engine.upgrade(settings_)
+            self.world = engine.world(self.rando_settings, self.random.getrandbits(32))
+            session = engine.open(self.rando_settings, self.world.world)
         except EngineError as e:
             raise OptionError(f"{GAME} ({self.player_name}, preset {option_values.preset}): {e}") from e
-        self.logic = build_logic(self.seed_artifact, _catalog)
+        self.oracle = Oracle(lambda inventories: engine.reach(session, inventories))
+
+    def _counts(self, state: CollectionState) -> dict[str, int]:
+        """Our collected items, by Map Rando name, as the oracle takes them."""
+        items = state.prog_items[self.player]
+        return {kind.rando_name: items[kind.name] for kind in _catalog.items if items[kind.name]}
 
     def create_regions(self) -> None:
+        # Map Rando's logic decides what's reachable (core.logic); regions only group the locations by area.
         menu = Region("Menu", self.player, self.multiworld)
         self.multiworld.regions.append(menu)
-        previous = menu
-        for step in (*self.logic.steps, self.logic.remaining):
-            region = Region(f"Step {step.number}", self.player, self.multiworld)
-            self.multiworld.regions.append(region)
-            entrance = previous.connect(region, f"To Step {step.number}")
-            if step.requires:
-                entrance.access_rule = lambda state, req=dict(step.requires): state.has_all_counts(req, self.player)
-            for index in step.locations:
-                info = _catalog.locations[index]
-                location = SMMRLocation(self.player, info.name, info.ap_id, region)
-                location.step = step.number
-                if step is self.logic.remaining and self.logic.steps:
-                    location.progress_type = LocationProgressType.EXCLUDED
-                region.locations.append(location)
-            previous = region
-        victory = SMMRLocation(self.player, "Mother Brain", None, previous)
+        regions: dict[str, Region] = {}
+        for index in self.world.locations:
+            info = _catalog.locations[index]
+            if info.area not in regions:
+                regions[info.area] = Region(info.area, self.player, self.multiworld)
+                self.multiworld.regions.append(regions[info.area])
+                menu.connect(regions[info.area])
+            location = SMMRLocation(self.player, info.name, info.ap_id, regions[info.area])
+            if not self.world.escape:   # (with an escape start, everything is reachable)
+                location.access_rule = lambda state, i=index: i in self.oracle.reach(self._counts(state)).locations
+            regions[info.area].locations.append(location)
+        victory = SMMRLocation(self.player, "Mother Brain", None, menu)
+        if not self.world.escape:
+            victory.access_rule = lambda state: self.oracle.reach(self._counts(state)).beatable
         victory.place_locked_item(SMMRItem("Victory", ItemClassification.progression, None, self.player))
-        previous.locations.append(victory)
+        menu.locations.append(victory)
         self.multiworld.completion_condition[self.player] = lambda state: state.has("Victory", self.player)
 
     def create_items(self) -> None:
-        kept = set(bottleneck_locations(self.logic)) if self.options.local_early_progression else set()
-        for index, item in enumerate(self.logic.pool):
-            ap_item = SMMRItem(item.name, CLASSIFICATIONS[item.classification], self.item_name_to_id[item.name],
-                               self.player)
-            ap_item.step = item.step
-            if index in kept:   # Map Rando's own item, at Map Rando's location
-                self.multiworld.get_location(_catalog.locations[index].name, self.player).place_locked_item(ap_item)
-            else:
-                self.multiworld.itempool.append(ap_item)
+        for item in item_pool(self.world.pool, _catalog):
+            self.multiworld.itempool.append(SMMRItem(item.name, ap_classification(item.classification),
+                                                     self.item_name_to_id[item.name], self.player))
 
-    def fill_hook(self, progitempool: List[Item], usefulitempool: List[Item], filleritempool: List[Item],
-                  fill_locations: List[Location]) -> None:
-        # Every step requires all items of the earlier steps, so a random fill rarely fits. Map Rando's own order
-        # does: our items are placed earliest step first (the fill pops from the end), and the earliest steps'
-        # locations come first. Other worlds' items and locations keep their positions.
-        def reorder(entries: List[Any], reverse: bool) -> None:
-            ours = [i for i, x in enumerate(entries) if isinstance(x, (SMMRItem, SMMRLocation)) and x.player == self.player]
-            for i, x in zip(ours, sorted((entries[i] for i in ours), key=lambda x: x.step, reverse=reverse)):
-                entries[i] = x
-
-        reorder(progitempool, reverse=True)
-        reorder(fill_locations, reverse=False)
+    def pre_fill(self) -> None:
+        """While fewer than EARLY_LOCATIONS of our locations are reachable, place there the item of ours that opens the
+        most: with one reachable location at the start (it happens), Archipelago's fill can corner itself."""
+        if self.world.escape:
+            return
+        ours = [item for item in self.multiworld.itempool if item.player == self.player and item.advancement]
+        collected: Counter[str] = Counter()
+        while True:
+            reach = self.oracle.reach(collected)
+            open_ = [index for index in sorted(reach.locations)
+                     if self.multiworld.get_location(_catalog.locations[index].name, self.player).item is None]
+            if len(open_) >= EARLY_LOCATIONS or not open_:
+                return
+            kinds = sorted({item.name for item in ours})
+            opened = {name: len(self.oracle.reach(collected + Counter({_rando_names[name]: 1})).locations)
+                      for name in kinds}
+            best = max(opened.values(), default=0)
+            if best <= len(reach.locations):
+                return   # no single item opens more: the fill has to manage
+            name = self.random.choice([name for name in kinds if opened[name] == best])
+            item = next(item for item in ours if item.name == name)
+            ours.remove(item)
+            self.multiworld.itempool.remove(item)
+            location = self.multiworld.get_location(_catalog.locations[self.random.choice(open_)].name, self.player)
+            location.place_locked_item(item)
+            collected[_rando_names[name]] += 1
 
     def create_item(self, name: str) -> Item:
-        unique = next(item.unique for item in _catalog.items if item.name == name)
-        classification = ItemClassification.progression if unique else ItemClassification.filler
-        return SMMRItem(name, classification, self.item_name_to_id[name], self.player)
+        kind = next(item for item in _catalog.items if item.name == name)
+        [item] = item_pool({kind.rando_name: 1}, _catalog)
+        return SMMRItem(name, ap_classification(item.classification), self.item_name_to_id[name], self.player)
 
     def get_filler_item_name(self) -> str:
         return "Missile"
@@ -150,24 +177,34 @@ class SMMRWorld(World):
         finally:
             self.rom_name_ready.set()   # modify_multidata waits for it, also when the output failed
 
-    def write_patch(self, output_directory: str) -> None:
-        self.rom_name = mwpatch.rom_name(runtime.abi(), self.player, self.multiworld.seed)
-        placed = []
+    def placement(self) -> list[PlacedItem]:
+        """What the fill placed at each of our item locations, in location index order."""
+        in_map = set(self.world.locations)
+        placed: list[PlacedItem] = []
         for info in _catalog.locations:
+            if info.index not in in_map:   # not in this map's rooms
+                placed.append(OwnItem("Nothing"))
+                continue
             item = self.multiworld.get_location(info.name, self.player).item
             assert item is not None
-            placed.append(PlacedItem(item.name, item.player, item.game, classification(item),
-                                     self.multiworld.get_player_name(item.player)))
-        mw = plan(_catalog, placed, self.player, self.game)
-        randomization = dict(self.seed_artifact["randomization"], item_placement=mw.item_placement,
-                             foreign_items=mw.foreign_items)
+            if item.player == self.player and item.game == GAME:
+                placed.append(OwnItem(item.name))
+            else:
+                placed.append(OtherWorldItem(item.name, self.multiworld.get_player_name(item.player),
+                                             classification(item)))
+        return placed
+
+    def write_patch(self, output_directory: str) -> None:
+        self.rom_name = mwpatch.rom_name(runtime.abi(), self.player, self.multiworld.seed)
+        mw = plan(_catalog, self.placement())
         patch = SMMRProcedurePatch(player=self.player, player_name=self.player_name)
-        patch.write_file("smmr.json", json.dumps({"settings": self.rando_settings, "randomization": randomization,
-                                                  "rom_name": self.rom_name}).encode())
+        patch.write_file("smmr.json", json.dumps({
+            "settings": self.rando_settings, "world": self.world.world, "item_placement": mw.item_placement,
+            "foreign_items": mw.foreign_items, "rom_name": self.rom_name}).encode())
         name = self.multiworld.get_out_file_name_base(self.player)
         patch.write(os.path.join(output_directory, f"{name}{patch.patch_file_ending}"))
 
-    def modify_multidata(self, multidata: Dict[str, Any]) -> None:
+    def modify_multidata(self, multidata: dict[str, Any]) -> None:
         # The client connects with the ROM name it reads from the ROM.
         self.rom_name_ready.wait()
         if self.rom_name:
@@ -175,7 +212,7 @@ class SMMRWorld(World):
             key = base64.b64encode(runtime.abi().rom_name(self.rom_name)[:size]).decode()
             multidata["connect_names"][key] = multidata["connect_names"][self.player_name]
 
-    def fill_slot_data(self) -> Dict[str, Any]:
-        return {"seed_hash": self.seed_artifact["seed_hash"],
+    def fill_slot_data(self) -> dict[str, Any]:
+        return {"seed_hash": self.world.seed_hash,
                 "map_layout": self.rando_settings["map_layout"]}
 

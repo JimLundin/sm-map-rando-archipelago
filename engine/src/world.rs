@@ -192,19 +192,12 @@ pub fn reach_chain(randomizer: &Randomizer, world: &World, inventories: &[Vec<(I
             state.step_num += 1;
         }
         randomizer.update_reachability(&mut state, &mut traversers);
-        // Map Rando's fixed point of flags and doors (Randomizer::step), staged: some strats need a flag *not* to be
-        // set (e.g. Wrecked Ship before Phantoon), so the flags they negate are set last, one at a time, each after
-        // everything else settled. Location results stick (as in Map Rando), so each stage is a play order: what's
-        // reachable before Phantoon, then after.
-        loop {
-            settle(randomizer, &mut state, &mut traversers, &negated);
-            let next = game_data.flag_ids.iter().enumerate().find(|&(i, &flag_id)| {
-                negated[flag_id] && !state.global_state.flags[flag_id] && flag_reached(randomizer, &state, i, flag_id)
-            });
-            let Some((_, &flag_id)) = next else { break };
-            state.global_state.flags[flag_id] = true;
-            randomizer.update_reachability(&mut state, &mut traversers);
-        }
+        // Map Rando's fixed point of flags and doors (Randomizer::step), in two stages: some strats need a flag *not*
+        // to be set (e.g. the Wrecked Ship before Phantoon), so the flags they negate are set after everything else
+        // settled. Location results stick (as in Map Rando), so each stage is a play order: what's reachable before
+        // those bosses, then after.
+        settle(randomizer, &mut state, &mut traversers, &negated);
+        settle(randomizer, &mut state, &mut traversers, &vec![false; negated.len()]);
         let locations = state.item_location_state.iter().enumerate();
         results.push(Reach {
             locations: locations.clone().filter(|(_, x)| x.bireachable_traversal.is_some()).map(|(i, _)| i).collect(),
@@ -286,6 +279,14 @@ pub fn pool(randomizer: &Randomizer) -> Vec<(Item, usize)> {
     (0..randomizer.initial_items_remaining.len())
         .filter(|&i| randomizer.initial_items_remaining[i] > 0)
         .map(|i| (Item::try_from(i).unwrap(), randomizer.initial_items_remaining[i]))
+        .collect()
+}
+
+/// The item locations in the map's rooms (a Small map has fewer).
+pub fn locations(randomizer: &Randomizer) -> Vec<usize> {
+    let game_data = randomizer.game_data;
+    (0..game_data.item_locations.len())
+        .filter(|&i| randomizer.map.room_mask[game_data.room_idx_by_id[&game_data.item_locations[i].0]])
         .collect()
 }
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import make_dataclass
 from typing import Dict, List, Optional, Sequence, Type
 
-from Options import Choice, DefaultOnToggle, PerGameCommonOptions
+from Options import Choice, PerGameCommonOptions
 
 from . import runtime
 from .core.options import (CATEGORIES, MAP_LAYOUTS, SAVE_ANIMALS, START_LOCATIONS, WALL_JUMP, OptionValues,
@@ -59,13 +59,6 @@ OPTION_TYPES: Dict[str, Type] = {
                             "escape. Preset: the full preset's.", [None, *SAVE_ANIMALS]),
 }
 
-class LocalEarlyProgression(DefaultOnToggle):
-    """Keep Map Rando's own items in its first, narrowest item placement steps (fewer than 5 locations). Without
-    it, a multiworld fill can fail when other worlds' items take those few locations."""
-    display_name = "Local Early Progression"
-
-
-OPTION_TYPES["local_early_progression"] = LocalEarlyProgression
 
 SMMROptions = make_dataclass("SMMROptions", list(OPTION_TYPES.items()), bases=(PerGameCommonOptions,))
 SMMROptions.__module__ = __name__

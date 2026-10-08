@@ -1,6 +1,6 @@
 """Stage S5, on the player's machine: the .apsmmr patch → the ROM.
 
-The patch holds `smmr.json` ({settings, randomization, rom_name}). Patching runs the engine's `rom` on the player's
+The patch holds `smmr.json` ({settings, world, item_placement, foreign_items, rom_name}). Patching runs the engine's `rom` on the player's
 vanilla ROM (S5a), then applies our multiworld patch on top (S5b, `core.mwpatch`).
 """
 from __future__ import annotations
@@ -29,7 +29,8 @@ class SMMRPatchExtension(APPatchExtension):
         with tempfile.TemporaryDirectory() as tmp:
             vanilla, out = Path(tmp) / "vanilla.sfc", Path(tmp) / "out.sfc"
             vanilla.write_bytes(rom)
-            runtime.engine().rom(data["settings"], data["randomization"], vanilla, out)
+            runtime.engine().rom_from_world(data["settings"], data["world"], data["item_placement"],
+                                            data["foreign_items"], vanilla, out)
             map_rando_rom = out.read_bytes()
         return mwpatch.apply(map_rando_rom, runtime.data("mw.ips"), runtime.abi(), runtime.catalog(),
                              data["rom_name"])

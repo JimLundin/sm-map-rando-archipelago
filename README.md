@@ -13,8 +13,9 @@ You need your own Super Metroid (JU) ROM; none is included or distributed.
 See `docs/architecture.md` for the diagram. In short:
 
 - **Engine** (`engine/`): our Rust binary over the `MapRandomizer` submodule: our fork of Map Rando, upstream plus
-  foreign items (ADR 0005). It speaks JSON: `info`, `upgrade`, `randomize`, `rom`, and `serve` for many requests from
-  one process.
+  foreign items (ADR 0005). It speaks JSON: `info`, `upgrade`, `world` (everything but the item placement), `open` and
+  `reach` (Map Rando's logic per inventory, ADR 0006), `rom`, `randomize` (Map Rando's own placement), and `serve` for
+  many requests from one process.
 - **Core** (`world/smmr/core/`): the pipeline stages as pure functions with JSON artifacts between them (options →
   settings → Seed → logic → plan → ROM). Standard library only.
 - **World** (`world/smmr/`): thin Archipelago adapters. The World, the options (built from Map Rando's presets), the

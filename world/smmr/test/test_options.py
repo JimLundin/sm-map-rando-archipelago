@@ -17,11 +17,11 @@ class TestCategoryOverrides(SMMRTestBase):
 
 
 class TestEscapeStart(SMMRTestBase):
-    """An escape start has no item placement steps: everything is reachable, nothing is needed."""
+    """An escape start places nothing: everything is reachable, nothing is needed."""
     options = {"map_layout": "vanilla", "start_location": "escape"}
 
     def test_generates(self):
         world = self.multiworld.worlds[self.player]
-        assert not world.logic.steps
+        assert world.world.escape
         self.fill()
         self.assertTrue(self.multiworld.can_beat_game())
