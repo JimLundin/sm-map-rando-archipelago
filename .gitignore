@@ -1,10 +1,8 @@
 .venv/
 dist/
+build/
+target/
 __pycache__/
 *.pyc
 *.sfc
 *.smc
-worlds/sm_map_rando/data/maprando/
-worlds/sm_map_rando/lib/
-tools/bin/
-native/pysmmaprando/target/
