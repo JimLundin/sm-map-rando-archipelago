@@ -1,0 +1,29 @@
+# The ROM ABI between the patch, the ROM and the client. The only copy: `tools/build_mw.py` generates the asm defines
+# from it, and `core/abi.py` reads it. Bump `version` on any change; the client refuses another version.
+version = 1
+
+[wram]  # offsets into WRAM ($7E:0000-$7F:FFFF), as the client reads/writes them through SNI
+game_state = 0x0998        # u16; 8 = main gameplay (vanilla)
+collected_items = 0xD870   # 0x40 bytes: vanilla item-collected bits, indexed by item PLM room argument
+collected_items_size = 0x40
+mailbox_seq = 0xF5A0       # u16, client → ROM: 1-based number of the received item in the mailbox
+mailbox_item = 0xF5A2      # u16, client → ROM: its Map Rando item id
+mailbox_sender = 0xF5A4    # u16, client → ROM: the Archipelago player who sent it
+mw_state = 0xF5A8          # u16, ROM only: 0 idle, 1 a received item's PLM is spawned and waits to be triggered
+mw_slot = 0xF5AA           # u16, ROM only: that PLM's slot
+received_count = 0xFE94    # u16, ROM → client: received items given so far; saved with the save file
+
+[rom]  # SNES addresses
+hook_plm_handler = 0x828B71  # vanilla `JSL $8485B4` (PLM handler) in the main gameplay loop
+code = 0xA2F4B0              # free in Map Rando's ROM (patches/rom_map/Bank A2.txt)
+code_end = 0xA2FFFF
+plm_bank_code = 0x84F300     # free in Map Rando's ROM (Bank 84.txt): code that must be in the PLM bank
+plm_bank_code_end = 0x84F37F
+header = 0xEAADF0            # free in Map Rando's ROM (Bank EA.txt): u16 abi version, then the tables below
+location_table = 0xEAAE00    # u8[0x200]: location index for each collected-item bit, 0xFF if none
+rom_name = 0x00FFC0          # 21 bytes, the cartridge title: identifies the seed and slot to the client
+rom_name_size = 21
+
+[items]
+nothing = 22                 # Map Rando's Nothing: never received
+count = 25
