@@ -17,7 +17,7 @@ from worlds.AutoWorld import World
 from . import runtime
 from .client import SMMRClient  # noqa: F401 (registers the SNI client)
 from .core.engine import EngineError
-from .core.logic import FILLER, PROGRESSION, USEFUL, LogicModel, build_logic
+from .core.logic import FILLER, PROGRESSION, USEFUL, LogicModel, bottleneck_locations, build_logic
 from .core import mwpatch
 from .core.mwplan import PlacedItem, plan
 from .core.options import build_settings
@@ -106,11 +106,15 @@ class SMMRWorld(World):
         self.multiworld.completion_condition[self.player] = lambda state: state.has("Victory", self.player)
 
     def create_items(self) -> None:
-        for item in self.logic.pool:
+        kept = set(bottleneck_locations(self.logic)) if self.options.local_early_progression else set()
+        for index, item in enumerate(self.logic.pool):
             ap_item = SMMRItem(item.name, CLASSIFICATIONS[item.classification], self.item_name_to_id[item.name],
                                self.player)
             ap_item.step = item.step
-            self.multiworld.itempool.append(ap_item)
+            if index in kept:   # Map Rando's own item, at Map Rando's location
+                self.multiworld.get_location(_catalog.locations[index].name, self.player).place_locked_item(ap_item)
+            else:
+                self.multiworld.itempool.append(ap_item)
 
     def fill_hook(self, progitempool: List[Item], usefulitempool: List[Item], filleritempool: List[Item],
                   fill_locations: List[Location]) -> None:

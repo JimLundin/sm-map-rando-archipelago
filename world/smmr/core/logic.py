@@ -39,6 +39,15 @@ class LogicModel:
     pool: Tuple[PoolItem, ...]       # one item per item location, in location index order
 
 
+def bottleneck_locations(logic: LogicModel, max_locations: int = 5) -> List[int]:
+    """The locations of the steps with fewer than `max_locations` locations, which keep Map Rando's own items.
+
+    Every step requires all items of the earlier steps, so a step with few locations is a bottleneck: if another
+    world's item takes one of them, the fill may find no place for ours. Map Rando's own placement there is known
+    to work (the pool is in location order, so location i keeps pool item i)."""
+    return [index for step in logic.steps if len(step.locations) < max_locations for index in step.locations]
+
+
 def build_logic(seed: Mapping[str, Any], catalog: Catalog) -> LogicModel:
     summary: List[Dict[str, Any]] = [step for step in seed["spoiler"]["summary"] if step["items"]]
     placement: List[str] = seed["randomization"]["item_placement"]

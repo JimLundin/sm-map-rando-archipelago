@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import atexit
 import hashlib
 import io
 import json
@@ -42,6 +43,13 @@ def _bundled(name: str) -> Optional[bytes]:
 
 @lru_cache(maxsize=None)
 def engine() -> SubprocessEngine:
+    """This machine's engine: one server process for the session, stopped when Python exits."""
+    found = _find_engine()
+    atexit.register(found.close)
+    return found
+
+
+def _find_engine() -> SubprocessEngine:
     maps = os.environ.get("SMMR_MAPS")
     maps_dir = Path(maps) if maps else None
     if "SMMR_ENGINE" in os.environ or (REPO / "engine").is_dir():

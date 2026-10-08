@@ -40,3 +40,11 @@ def test_stop_early_leaves_the_rest_as_filler(catalog, seed):
     assert len(logic.steps) == 3
     for index in logic.remaining.locations:
         assert logic.pool[index].classification == FILLER
+
+
+def test_bottleneck_steps_are_the_narrow_ones(catalog, seed):
+    from core.logic import bottleneck_locations
+    logic = build_logic(seed, catalog)
+    kept = bottleneck_locations(logic, max_locations=5)
+    assert kept == [i for step in logic.steps if len(step.locations) < 5 for i in step.locations]
+    assert logic.steps[0].locations[0] in kept   # the first step has a single location in this seed
