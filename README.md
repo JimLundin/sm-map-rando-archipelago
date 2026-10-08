@@ -57,7 +57,7 @@ After a Map Rando update (submodule bump): `make data fixtures`, then the loops 
 
 Working: solo and multiworld generation, ROM patching, sending and receiving items (other worlds' items show who gets
 them), the SNI client, options from Map Rando's presets, map pools downloaded on demand, packaging. Not yet:
-customization, per-class off-world item graphics, "from player X" on received items, shared maps, death link, hints,
+customization, "from player X" on received items, shared maps, death link, hints,
 credits, multi-platform CI (see `docs/architecture.md`).
 
 ## License and credits

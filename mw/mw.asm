@@ -13,6 +13,7 @@ lorom
 incsrc "build/abi.asm"
 
 !plm_handler = $8485B4
+!plm_handler_rtl = $85D9            ; the RTL that ends the PLM handler, in bank $84
 !room_width_blocks = $07A5
 !samus_x = $0AF6
 !samus_y = $0AFA
@@ -171,15 +172,23 @@ plm_by_item:
     dw $EED7, $EEDB, $EEDF, $EEE3, $EEE7, $EEEB, $EEEF, $EEF3, $EEF7, $EEFB, $EEFF, $EF03, $EF07, $EF0B, $EF0F
     dw $EF13, $EF17, $EF1B, $EF1F, $EF23, $EF27, $F000, $EEDB, $F0E2, $F0EE
 
-assert pc() <= !rom_code_end
-
-; Runs the setup of PLM id X for PLM slot Y. Setups are bank $84 subroutines (RTS), run with data bank $84.
-org !rom_plm_bank_code
+; Runs the setup of PLM id X for PLM slot Y (JSL). Setups are bank $84 subroutines (RTS), run with data bank $84:
+; this one returns through the RTL that ends the PLM handler ($84:85D9), so it needs no code in bank $84.
 call_plm_setup:
     phb
-    phk
+    pea $8484
     plb
-    jsr ($0000,x)
+    plb
+    lda.l $840000,x                ; the setup: the first word of the PLM header
+    sta $12
+    lda #$0084
+    sta $14
+    phk
+    per .return-1
+    pea.w !plm_handler_rtl-1
+    jml [$0012]
+.return:
     plb
     rtl
-assert pc() <= !rom_plm_bank_code_end
+
+assert pc() <= !rom_code_end

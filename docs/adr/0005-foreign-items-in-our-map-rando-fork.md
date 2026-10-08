@@ -26,8 +26,9 @@ markers and its PLMs, which we can't do from outside the crate.
 
 ## Consequences
 
-- Off-world items can be seen and picked up, and the map marks them by class.
+- Off-world items can be seen and picked up; their graphics and map markers show their class.
 - A Map Rando update is a rebase of the fork branch onto the new upstream, then `make data fixtures`.
-- `foreign_item.asm` takes most of the free bank $84 space; our `call_plm_setup` moved to $84:F375 (ABI version 2).
+- `foreign_item.asm` takes the free bank $84 space; our patch runs PLM setups from bank $A2 instead, returning
+  through the RTL that ends the PLM handler (ABI version 3).
 - Picking one up shows who gets what ("ALICE - HOOKSHOT") in a message box, after the item fanfare as Map Rando's
   setting has it. The message font has A-Z, 0-9, space and . - ? !; `core.mwplan.message_text` maps names to it.
