@@ -12,6 +12,7 @@ path = "src/main.rs"
 [dependencies]
 maprando = { path = "../MapRandomizer/rust/maprando" }
 maprando-game = { path = "../MapRandomizer/rust/maprando-game" }
+maprando-logic = { path = "../MapRandomizer/rust/maprando-logic" }
 anyhow = "1.0.68"
 rand = "0.8.5"
 serde = "1.0.152"
