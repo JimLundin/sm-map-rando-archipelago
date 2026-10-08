@@ -6,9 +6,16 @@
 from __future__ import annotations
 
 import json
+import platform
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Protocol
+
+
+def platform_tag() -> str:
+    """Names the engine build for this machine in the .apworld's bin/ (e.g. linux-x86_64, win32-amd64)."""
+    return f"{sys.platform}-{platform.machine().lower()}"
 
 
 class EngineError(Exception):

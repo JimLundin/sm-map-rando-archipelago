@@ -1,11 +1,12 @@
 # One target per iteration loop (docs/architecture.md). Variables can be overridden: make test-ap AP=~/Archipelago
 PY      ?= python3
 AP      ?= /tmp/smmr-rw/Archipelago
+AP_CLEAN ?= /tmp/smmr-pkg/Archipelago
 ROM     ?=
 CARGO   ?= cargo
 ENGINE  := engine/target/dev-release/smmr-engine
 
-.PHONY: test-core engine data test-ap test-rom fixtures fetch mw asar
+.PHONY: test-core engine data test-ap test-rom fixtures fetch mw asar apworld e2e
 
 test-core:              ## core stages, no Archipelago, no Rust (< 1 s)
 	$(PY) -m pytest -q tests/core
@@ -22,6 +23,13 @@ mw:                     ## assemble the multiworld patch (< 1 s): world/smmr/dat
 
 test-rom: engine mw     ## ROM scenarios in a headless emulator: ROM=<vanilla JU ROM> (and SMMR_SNES_CORE)
 	SMMR_TEST_ROM="$(ROM)" $(PY) -m pytest -q tests/rom
+
+apworld:                ## dist/smmr.apworld with this platform's release engine and Map Rando's data
+	cd engine && $(CARGO) build --release
+	$(PY) tools/build_apworld.py
+
+e2e: apworld            ## generate, patch and boot from the packaged world: AP_CLEAN=<AP without worlds/smmr> ROM=...
+	$(PY) tools/e2e.py --ap "$(AP_CLEAN)" --rom "$(ROM)"
 
 fetch:                  ## Map Rando data not in its repository (Mosaic patches)
 	$(PY) tools/fetch_data.py
