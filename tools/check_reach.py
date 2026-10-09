@@ -21,7 +21,7 @@ import time
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TypeAlias, assert_never
+from typing import Any, assert_never
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "world/smmr")]
@@ -56,7 +56,7 @@ class Lost:
     locations: frozenset[int]
 
 
-Mismatch: TypeAlias = Missing | Extra | Lost
+type Mismatch = Missing | Extra | Lost
 
 
 def describe(mismatch: Mismatch) -> str:

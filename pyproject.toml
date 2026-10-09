@@ -1,16 +1,24 @@
 [project]
 name = "smmr"
 description = "Super Metroid Map Rando for Archipelago"
-requires-python = ">=3.11"   # what Archipelago supports: 3.11 to 3.13 (ModuleUpdate.py)
+requires-python = ">=3.12"   # what Archipelago's installer bundles (3.12; it supports 3.11 to 3.13 from source)
 dynamic = ["version"]        # world/smmr/archipelago.json
 
 [tool.pyright]
-pythonVersion = "3.11"
+pythonVersion = "3.12"
 venvPath = "."
 venv = ".venv"
 include = ["world/smmr", "tests", "tools"]
 exclude = ["**/__pycache__", "world/smmr/test"]
 extraPaths = ["world/smmr", "tools"]
+# The tests import their own conftest; the World's adapters see Archipelago (`make typecheck AP=...` links it).
+executionEnvironments = [
+  { root = "tests/core", extraPaths = ["tests/core", "world/smmr", "tools"] },
+  { root = "tests/rom", extraPaths = ["tests/rom", "world/smmr", "tools"] },
+  { root = "tests/engine", extraPaths = ["world/smmr", "tools"] },
+  { root = "world/smmr", extraPaths = ["build/archipelago"] },
+  { root = "tools", extraPaths = ["world/smmr", "tools"] },
+]
 strict = ["world/smmr/core", "tests/core", "tools"]
 reportMissingImports = "warning"
 reportMissingModuleSource = "none"

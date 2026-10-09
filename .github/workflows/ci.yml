@@ -8,10 +8,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
-      - run: pip install pytest pyright
+        with: { python-version: "3.12" }
+      - run: pip install pytest
       - run: make test-core
-      - run: pyright --pythonpath "$(which python)"   # pyproject.toml; strict for the core, its tests and the tools
 
   engine:
     runs-on: ubuntu-latest
@@ -22,7 +21,7 @@ jobs:
           git submodule update --init MapRandomizer
           git -C MapRandomizer submodule update --init sm-json-data rust/lznint asar
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
+        with: { python-version: "3.12" }
       - run: pip install pytest backports.zstd cmake
       - uses: Swatinem/rust-cache@v2
         with: { workspaces: engine }
@@ -44,12 +43,13 @@ jobs:
           git submodule update --init MapRandomizer
           git -C MapRandomizer submodule update --init sm-json-data rust/lznint
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
+        with: { python-version: "3.12" }
       - uses: actions/download-artifact@v4
         with: { name: engine-linux, path: engine/target/dev-release }
       - run: chmod +x engine/target/dev-release/smmr-engine && pip install backports.zstd && python tools/fetch_data.py
       - name: Archipelago
         run: |
           git clone --depth 1 https://github.com/ArchipelagoMW/Archipelago.git ../Archipelago
-          pip install -r ../Archipelago/requirements.txt pytest
+          pip install -r ../Archipelago/requirements.txt pytest pyright
+      - run: make typecheck AP=../Archipelago   # pyproject.toml: strict for the core, its tests and the tools
       - run: make test-ap AP=../Archipelago PY=python

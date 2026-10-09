@@ -3,12 +3,18 @@ docs/architecture.md); nothing here decides anything about Map Rando.
 """
 from __future__ import annotations
 
+import sys
+
+if sys.version_info < (3, 12):   # before importing the rest: it uses 3.12 syntax
+    raise ImportError(f"Super Metroid Map Rando needs Python 3.12 or newer (Archipelago's installer has it); this is "
+                      f"{sys.version.split()[0]}.")
+
 import base64
 import json
 import os
 import threading
 from collections import Counter
-from typing import Any, ClassVar, assert_never
+from typing import TYPE_CHECKING, Any, ClassVar, assert_never, override
 
 import settings
 from BaseClasses import CollectionState, Item, ItemClassification, Location, Region
@@ -24,6 +30,9 @@ from .core.mwplan import OtherWorldItem, OwnItem, PlacedItem, plan
 from .core.options import build_settings
 from .options import SMMROptions, values
 from .patch import GAME, SM_JU_MD5, SMMRProcedurePatch
+
+if TYPE_CHECKING:
+    from NetUtils import MultiData
 
 _catalog = runtime.catalog()
 _rando_names = {item.name: item.rando_name for item in _catalog.items}
@@ -75,7 +84,7 @@ class SMMRWorld(World):
     game = GAME
     options_dataclass = SMMROptions
     options: SMMROptions  # pyright: ignore[reportInvalidTypeForm]  (made with make_dataclass, from the presets)
-    settings: ClassVar[SMMRSettings]
+    settings: ClassVar[SMMRSettings]  # pyright: ignore[reportIncompatibleVariableOverride]  (as AP documents it)
     settings_key = "smmr_options"
     topology_present = True
 
@@ -91,6 +100,7 @@ class SMMRWorld(World):
         self.rom_name = ""
         self.rom_name_ready = threading.Event()
 
+    @override
     def generate_early(self) -> None:
         option_values = values(self.options)
         runtime.ensure_map_pool(option_values.map_layout)
@@ -109,6 +119,7 @@ class SMMRWorld(World):
         items = state.prog_items[self.player]
         return {kind.rando_name: items[kind.name] for kind in _catalog.items if items[kind.name]}
 
+    @override
     def create_regions(self) -> None:
         # Map Rando's logic decides what's reachable (core.logic); regions only group the locations by area.
         menu = Region("Menu", self.player, self.multiworld)
@@ -131,11 +142,13 @@ class SMMRWorld(World):
         menu.locations.append(victory)
         self.multiworld.completion_condition[self.player] = lambda state: state.has("Victory", self.player)
 
+    @override
     def create_items(self) -> None:
         for item in item_pool(self.world.pool, _catalog):
             self.multiworld.itempool.append(SMMRItem(item.name, ap_classification(item.classification),
                                                      self.item_name_to_id[item.name], self.player))
 
+    @override
     def pre_fill(self) -> None:
         """While fewer than EARLY_LOCATIONS of our locations are reachable, place there the item of ours that opens the
         most: with one reachable location at the start (it happens), Archipelago's fill can corner itself."""
@@ -163,14 +176,17 @@ class SMMRWorld(World):
             location.place_locked_item(item)
             collected[_rando_names[name]] += 1
 
+    @override
     def create_item(self, name: str) -> Item:
         kind = next(item for item in _catalog.items if item.name == name)
         [item] = item_pool({kind.rando_name: 1}, _catalog)
         return SMMRItem(name, ap_classification(item.classification), self.item_name_to_id[name], self.player)
 
+    @override
     def get_filler_item_name(self) -> str:
         return "Missile"
 
+    @override
     def generate_output(self, output_directory: str) -> None:
         try:
             self.write_patch(output_directory)
@@ -195,7 +211,9 @@ class SMMRWorld(World):
         return placed
 
     def write_patch(self, output_directory: str) -> None:
-        self.rom_name = mwpatch.rom_name(runtime.abi(), self.player, self.multiworld.seed)
+        seed = self.multiworld.seed
+        assert seed is not None
+        self.rom_name = mwpatch.rom_name(runtime.abi(), self.player, seed)
         mw = plan(_catalog, self.placement())
         patch = SMMRProcedurePatch(player=self.player, player_name=self.player_name)
         patch.write_file("smmr.json", json.dumps({
@@ -204,7 +222,8 @@ class SMMRWorld(World):
         name = self.multiworld.get_out_file_name_base(self.player)
         patch.write(os.path.join(output_directory, f"{name}{patch.patch_file_ending}"))
 
-    def modify_multidata(self, multidata: dict[str, Any]) -> None:
+    @override
+    def modify_multidata(self, multidata: MultiData) -> None:
         # The client connects with the ROM name it reads from the ROM.
         self.rom_name_ready.wait()
         if self.rom_name:
@@ -212,6 +231,7 @@ class SMMRWorld(World):
             key = base64.b64encode(runtime.abi().rom_name(self.rom_name)[:size]).decode()
             multidata["connect_names"][key] = multidata["connect_names"][self.player_name]
 
+    @override
     def fill_slot_data(self) -> dict[str, Any]:
         return {"seed_hash": self.world.seed_hash,
                 "map_layout": self.rando_settings["map_layout"]}

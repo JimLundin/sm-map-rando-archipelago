@@ -25,7 +25,7 @@ See `docs/architecture.md` for the diagram. In short:
 
 ## Development
 
-Requirements: Rust, Python 3.11+, CMake and a C++ compiler (for asar), a libretro SNES core for the ROM tests (e.g.
+Requirements: Rust, Python 3.12+ (what Archipelago's installer bundles), CMake and a C++ compiler (for asar), a libretro SNES core for the ROM tests (e.g.
 snes9x; `SMMR_SNES_CORE`), an Archipelago checkout for the World tests.
 
 ```

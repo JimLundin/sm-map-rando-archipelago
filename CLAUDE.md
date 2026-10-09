@@ -14,8 +14,9 @@ Single-context: the glossary is `CONTEXT.md` at the root, and ADRs go in `docs/a
 
 ## Python style
 
-Python 3.11, the oldest Archipelago supports (`ModuleUpdate.py`: 3.11 to 3.13): no `type X = ...`, no `class C[T]`,
-no `@override`. Model variants as discriminated unions: frozen, slotted dataclasses joined in a `TypeAlias`, handled
-with `match` and closed by `assert_never`. Builtin generics, `X | None`, ABCs from `collections.abc`, `StrEnum`,
-`Self`. Parse JSON into typed values at the engine port. `make typecheck` (pyright, configured in `pyproject.toml`) is
-strict for `world/smmr/core`, `tests/core` and `tools`.
+Python 3.12, what Archipelago's installer bundles (and the target on Windows): `type X = ...` aliases, PEP 695
+generics, `@override` on methods of Archipelago's classes. Model variants as discriminated unions: frozen, slotted
+dataclasses joined in a `type` alias, handled with `match` and closed by `assert_never`. Builtin generics, `X | None`,
+ABCs from `collections.abc`, `StrEnum`, `Self`. Parse JSON into typed values at the engine port. `make typecheck
+AP=<Archipelago checkout>` (pyright, configured in `pyproject.toml`) is strict for `world/smmr/core`, `tests/core` and
+`tools`, and checks the World's adapters against Archipelago.

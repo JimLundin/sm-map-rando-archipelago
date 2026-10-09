@@ -11,7 +11,8 @@ ENGINE  := engine/target/dev-release/smmr-engine
 test-core:              ## core stages, no Archipelago, no Rust (< 1 s)
 	$(PY) -m pytest -q tests/core
 
-typecheck:              ## pyright (pyproject.toml): strict for the core, its tests and the tools
+typecheck:              ## pyright (pyproject.toml), against Archipelago AP=...: strict for the core, its tests, the tools
+	mkdir -p build && ln -sfn $(AP) build/archipelago
 	pyright
 
 engine:                 ## incremental, optimized engine build

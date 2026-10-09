@@ -9,12 +9,12 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TypeAlias
+
 
 from .catalog import Catalog
 
-Inventory: TypeAlias = Mapping[str, int]                  # Map Rando item name → count
-InventoryKey: TypeAlias = tuple[tuple[str, int], ...]
+type Inventory = Mapping[str, int]                  # Map Rando item name → count
+type InventoryKey = tuple[tuple[str, int], ...]
 
 
 class Classification(StrEnum):
@@ -30,7 +30,7 @@ class Reach:
     beatable: bool                   # Mother Brain can be defeated
 
 
-Query: TypeAlias = Callable[[Sequence[Inventory]], list[Reach]]
+type Query = Callable[[Sequence[Inventory]], list[Reach]]
 
 
 @dataclass(slots=True)

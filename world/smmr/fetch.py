@@ -49,7 +49,7 @@ def mosaic(data_dir: Path) -> Path:
     if not (target / "tilesets.bps").exists():
         build_id = (data_dir / "MOSAIC_BUILD_ID").read_text().strip()
         try:
-            from compression import zstd  # Python 3.14+
+            from compression import zstd  # pyright: ignore[reportMissingImports]  (Python 3.14+)
         except ImportError:
             from backports import zstd  # type: ignore[no-redef]
         with tempfile.TemporaryDirectory() as tmp:

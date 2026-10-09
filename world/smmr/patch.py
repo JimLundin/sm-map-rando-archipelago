@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import tempfile
+from typing import override
 from pathlib import Path
 
 import Utils
@@ -44,6 +45,7 @@ class SMMRProcedurePatch(APProcedurePatch):
     procedure = [("smmr_build", ["smmr.json"])]
 
     @classmethod
+    @override
     def get_source_data(cls) -> bytes:
         return vanilla_rom_bytes()
 

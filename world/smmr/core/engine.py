@@ -15,13 +15,13 @@ import threading
 from pathlib import Path
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import IO, Any, Protocol, Self, TypeAlias
+from typing import IO, Any, Protocol, Self
 
 from .logic import Inventory, Reach
 
 RESPONSE = b"\x1e"
 
-JsonObject: TypeAlias = dict[str, Any]      # Map Rando's own data (settings, a world): only the engine reads it
+type JsonObject = dict[str, Any]      # Map Rando's own data (settings, a world): only the engine reads it
 
 
 @dataclass(frozen=True, slots=True)

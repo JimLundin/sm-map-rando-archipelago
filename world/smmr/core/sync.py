@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence, Set
 from dataclasses import dataclass
-from typing import TypeAlias
+
 
 from .abi import Abi
 from .catalog import ITEM_ID_BASE, LOCATION_ID_BASE
@@ -46,7 +46,7 @@ class Goal:
     """Samus escaped: the goal is reached."""
 
 
-Action: TypeAlias = SendLocations | Deliver | Goal
+type Action = SendLocations | Deliver | Goal
 
 
 def step(abi: Abi, location_table: bytes, snapshot: Snapshot, checked: Set[int],

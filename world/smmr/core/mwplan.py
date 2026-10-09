@@ -10,7 +10,7 @@ from __future__ import annotations
 import unicodedata
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Literal, TypeAlias, TypedDict, assert_never
+from typing import Literal, TypedDict, assert_never
 
 from .catalog import Catalog
 from .logic import Classification
@@ -18,7 +18,7 @@ from .logic import Classification
 MESSAGE_ROW = 26                                         # characters in a row of the message box
 MESSAGE_CHARS = frozenset("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .-?!")
 
-ForeignClass: TypeAlias = Literal["Progression", "Useful", "Filler"]
+type ForeignClass = Literal["Progression", "Useful", "Filler"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,7 +35,7 @@ class OtherWorldItem:
     classification: Classification
 
 
-PlacedItem: TypeAlias = OwnItem | OtherWorldItem         # what Archipelago placed at one of our locations
+type PlacedItem = OwnItem | OtherWorldItem         # what Archipelago placed at one of our locations
 
 
 # Map Rando's `Randomization.foreign_items` entry (the functional syntax: `class` is a keyword).

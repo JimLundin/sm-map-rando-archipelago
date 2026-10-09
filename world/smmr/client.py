@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, assert_never
+from typing import TYPE_CHECKING, assert_never, override
 
 from NetUtils import ClientStatus
 from worlds.AutoSNIClient import SNIClient
@@ -26,6 +26,7 @@ class SMMRClient(SNIClient):
     def __init__(self) -> None:
         self.location_table: bytes | None = None
 
+    @override
     async def validate_rom(self, ctx: "SNIContext") -> bool:
         from SNIClient import snes_read
         abi = runtime.abi()
@@ -48,6 +49,7 @@ class SMMRClient(SNIClient):
         ctx.rom = name
         return True
 
+    @override
     async def game_watcher(self, ctx: "SNIContext") -> None:
         from SNIClient import snes_buffered_write, snes_flush_writes, snes_read
         if ctx.server is None or ctx.slot is None or self.location_table is None:
