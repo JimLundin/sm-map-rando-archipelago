@@ -4056,6 +4056,8 @@ class SamusSprite(Choice):
     samus_backwards (Backwards Samus), samus_upsidedown (Upside-Down Samus), samus_180-degree (180-Degree Samus),
     samus_mini (Mini Samus), samus_left-leg (Left Leg Samus), samus_cannon (Samus Cannon), samus_invisible
     (Invisible Samus), hitboxhelper2 (Hitbox Helper), magic_pants (Magic Pants)
+
+    On the maprando.com seed page: Customization > Samus sprite.
     """
     display_name = "Samus sprite"
     field = "samus_sprite"
@@ -4197,6 +4199,8 @@ class EtankColor(TextChoice):
     This option has minor side effects on the colors of certain items.
 
     One of the website's colors (by hex RGB code), or any other hex RGB code such as 'ff0000'.
+
+    On the maprando.com seed page: Customization > Energy tank color.
     """
     display_name = "Energy tank color"
     field = "etank_color"
@@ -4238,6 +4242,8 @@ class RoomTheming(Choice):
     - Area Tiling: Rooms graphics are redrawn to follow a consistent theme for each area. This provides the
         highest level of variety and cohesiveness in room appearance.
     Other variations of these options are available under "Other customization options".
+
+    On the maprando.com seed page: Customization > Room theming.
     """
     display_name = "Room theming"
     field = "room_theming"
@@ -4261,6 +4267,8 @@ class RoomPalettes(Choice):
     - If an individual area is selected (e.g. Crateria), then all rooms use a palette based on that area.
 
     'room_theming' (the default) uses the value given by the room_theming option.
+
+    On the maprando.com seed page: Customization > Other customization options > Room palettes.
     """
     display_name = "Room palettes"
     field = "room_palettes"
@@ -4301,6 +4309,8 @@ class TileTheme(Choice):
     will also use the Statues Hallway theme.
 
     'room_theming' (the default) uses the value given by the room_theming option.
+
+    On the maprando.com seed page: Customization > Other customization options > Tile theme.
     """
     display_name = "Tile theme"
     field = "tile_theme"
@@ -4342,6 +4352,8 @@ class DoorTheme(Choice):
     Contrast |
     Note that the Vibrant and Contrast settings have side effects on colors in other places, such as in the HUD,
     some types of beam doors, and acid.
+
+    On the maprando.com seed page: Customization > Door colors.
     """
     display_name = "Door colors"
     field = "door_theme"
@@ -4360,6 +4372,8 @@ class Music(Choice):
     load (though not play), in order to keep room load timings consistent.
     MSU-1 support is built into the randomizer; on applicable platforms this can be used to customize the music,
     still with no effect on room load timings.
+
+    On the maprando.com seed page: Customization > Music.
     """
     display_name = "Music"
     field = "music"
@@ -4378,6 +4392,8 @@ class Shaking(Choice):
     - Vanilla: Screen shaking happens as in the vanilla game (which has up to 3-pixel displacements).
     - Reduced: Screen shaking is capped to 1-pixel displacements.
     - Disabled: Screen shaking is disabled.
+
+    On the maprando.com seed page: Customization > Screen shaking.
     """
     display_name = "Screen shaking"
     field = "shaking"
@@ -4400,6 +4416,8 @@ class Flashing(Choice):
         effectiveness of these changes is not guaranteed and may vary by individual.
     The full-screen flashing after Mother Brain phase 1 is an exception, being always removed regardless of which
     option is selected.
+
+    On the maprando.com seed page: Customization > Screen flashing.
     """
     display_name = "Screen flashing"
     field = "flashing"
@@ -4416,6 +4434,8 @@ class DisableBeeping(Toggle):
     This setting affects the low-energy beeping which alerts the player when Samus is at 30 energy or less.
     - Vanilla: The low-energy beeping behaves as in the vanilla game.
     - Disabled: The low-energy beeping is disabled.
+
+    On the maprando.com seed page: Customization > Low-energy beeping.
     """
     display_name = "Low-energy beeping"
     field = "disable_beeping"
@@ -4430,6 +4450,8 @@ class ReserveHudStyle(DefaultOnToggle):
         whether reserves have any energy or not.
     - Revamped: Each reserve tank is indicated with a bar showing how full it is. If reserve mode is AUTO, then
         the AUTO text also appears, and its color indicates whether reserves have any energy or not.
+
+    On the maprando.com seed page: Customization > Other customization options > Reserve tank HUD style.
     """
     display_name = "Reserve tank HUD style"
     field = "reserve_hud_style"
@@ -4449,6 +4471,8 @@ class ScrewAttackAnimation(Choice):
     Attack without Space Jump was apparently overlooked or considered unimportant.
 
     Vanilla: the Screw Attack animation always looks like Space Jump. Split (default): it depends.
+
+    On the maprando.com seed page: Customization > Other customization options > Screw Attack animation.
     """
     display_name = "Screw Attack animation"
     field = "vanilla_screw_attack_animation"
@@ -4463,6 +4487,8 @@ class RoomNames(DefaultOnToggle):
     Room names.
 
     If enabled, then the name of the current room is shown at the bottom of the pause menu map screen.
+
+    On the maprando.com seed page: Customization > Other customization options > Room names.
     """
     display_name = "Room names"
     field = "room_names"
@@ -4475,6 +4501,9 @@ class MapTheme(Choice):
     This option changes the appearance of the map and mini-map tiles:
     - Light: The walls of rooms are drawn as white, as in the vanilla game.
     - Dark: The walls of rooms are drawn as black.
+
+    On the maprando.com seed page: Customization > Other customization options > Map appearance options > Map
+    theme.
     """
     display_name = "Map theme"
     field = "map_theme"
@@ -4492,6 +4521,9 @@ class ItemDotChange(Choice):
     - Stay: No change is made to the item dots (vanilla behavior).
     - Fade: Item dots fade to a darker color but remain visible.
     - Disappear: Item dots disappear entirely.
+
+    On the maprando.com seed page: Customization > Other customization options > Map appearance options > Item
+    dots after collection.
     """
     display_name = "Item dots after collection"
     field = "item_dot_change"
@@ -4510,6 +4542,9 @@ class TransitionLetters(DefaultOnToggle):
     - Arrows: An arrow is used, showing the direction of the transition.
     - Letters: A letter is used, the first letter of the name of the neighboring area.
     In both cases, transitions markers (arrows or letters) are colored according to the neighboring area's color.
+
+    On the maprando.com seed page: Customization > Other customization options > Map appearance options > Area
+    transition markers.
     """
     display_name = "Area transition markers"
     field = "transition_letters"
@@ -4523,6 +4558,9 @@ class BossIcons(DefaultOnToggle):
     - Enabled: Boss icons are drawn over boss rooms, the same as in the vanilla game. This is a gray monster head
         symbol that can help the player quickly identify boss room locations.
     - Disabled: Icons are not drawn over boss rooms.
+
+    On the maprando.com seed page: Customization > Other customization options > Map appearance options > Boss
+    room icons.
     """
     display_name = "Boss room icons"
     field = "boss_icons"
@@ -4536,6 +4574,9 @@ class MinibossIcons(DefaultOnToggle):
     - Enabled: Icons are drawn over miniboss rooms. This is a green monster head symbol that can help the player
         quickly identify miniboss room locations.
     - Disabled: Icons are not drawn over miniboss rooms.
+
+    On the maprando.com seed page: Customization > Other customization options > Map appearance options > Miniboss
+    room icons.
     """
     display_name = "Miniboss room icons"
     field = "miniboss_icons"
@@ -4551,6 +4592,9 @@ class SaveIcons(DefaultOnToggle):
         to be overwritten. Samus's spawn point is also shown as a helmet until three saves have been used. An icon
         is also drawn for the Ship, with the same appearance as in the vanilla game.
     - Disabled: Icons are not drawn for saves, the spawn point, nor the Ship.
+
+    On the maprando.com seed page: Customization > Other customization options > Map appearance options > Save
+    icons.
     """
     display_name = "Save icons"
     field = "save_icons"
@@ -4566,6 +4610,9 @@ class StatuesHallwayTiling(Choice):
     - Default: Statues Hallway tile theme is applied to these rooms only if the "Tile theme" is set to "Area-
         themed", "Area-shuffled", or "Scrambled".
     - Enabled: Statues Hallway tile theme is always applied to these rooms.
+
+    On the maprando.com seed page: Customization > Other customization options > Tourian proximity theming >
+    Statues Hallway tiling.
     """
     display_name = "Statues Hallway tiling"
     field = "statues_hallway_tiling"
@@ -4585,6 +4632,9 @@ class StatuesHallwayAudio(Choice):
     - Enabled: Statues Hallway audio plays in these rooms. This is a low background hum, replacing the music that
         would otherwise play.
     - Louder: Statues Hallway audio plays in these rooms at a higher volume.
+
+    On the maprando.com seed page: Customization > Other customization options > Tourian proximity theming >
+    Statues Hallway audio.
     """
     display_name = "Statues Hallway audio"
     field = "statues_hallway_audio"
@@ -4598,6 +4648,8 @@ class StatuesHallwayAudio(Choice):
 class ControlShot(Choice):
     """
     Shot.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Shot.
     """
     display_name = "Shot"
     field = "control_shot"
@@ -4615,6 +4667,8 @@ class ControlShot(Choice):
 class ControlJump(Choice):
     """
     Jump.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Jump.
     """
     display_name = "Jump"
     field = "control_jump"
@@ -4632,6 +4686,8 @@ class ControlJump(Choice):
 class ControlDash(Choice):
     """
     Dash.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Dash.
     """
     display_name = "Dash"
     field = "control_dash"
@@ -4649,6 +4705,9 @@ class ControlDash(Choice):
 class ControlItemSelect(Choice):
     """
     Item Select.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Item
+    Select.
     """
     display_name = "Item Select"
     field = "control_item_select"
@@ -4666,6 +4725,9 @@ class ControlItemSelect(Choice):
 class ControlItemCancel(Choice):
     """
     Item Cancel.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Item
+    Cancel.
     """
     display_name = "Item Cancel"
     field = "control_item_cancel"
@@ -4683,6 +4745,8 @@ class ControlItemCancel(Choice):
 class ControlAngleUp(Choice):
     """
     Angle Up.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Angle Up.
     """
     display_name = "Angle Up"
     field = "control_angle_up"
@@ -4700,6 +4764,8 @@ class ControlAngleUp(Choice):
 class ControlAngleDown(Choice):
     """
     Angle Down.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Angle Down.
     """
     display_name = "Angle Down"
     field = "control_angle_down"
@@ -4719,6 +4785,8 @@ class SpinLockButtons(OptionSet):
     Spin lock button combination.
 
     Buttons to press simultaneously for spin lock.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Spin lock.
     """
     display_name = "Spin lock buttons"
     field = "spin_lock_buttons"
@@ -4731,6 +4799,9 @@ class QuickReloadButtons(OptionSet):
     Quick reload button combination.
 
     Buttons to press simultaneously for quick reload.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Quick
+    reload.
     """
     display_name = "Quick reload buttons"
     field = "quick_reload_buttons"
@@ -4755,6 +4826,8 @@ class SaveStateButtons(OptionSet):
     - The "Limited" option, if enabled, forces strategic use of save states.
     - It works for some platforms (e.g FXPAK) that would otherwise be unsupported.
     This feature requires 256KB SRAM; FXPAK and most modern emulators support this configuration.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Save state.
     """
     display_name = "Save state buttons"
     field = "save_state_buttons"
@@ -4779,6 +4852,8 @@ class LoadStateButtons(OptionSet):
     - The "Limited" option, if enabled, forces strategic use of save states.
     - It works for some platforms (e.g FXPAK) that would otherwise be unsupported.
     This feature requires 256KB SRAM; FXPAK and most modern emulators support this configuration.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Load state.
     """
     display_name = "Load state buttons"
     field = "load_state_buttons"
@@ -4789,6 +4864,8 @@ class LoadStateButtons(OptionSet):
 class Moonwalk(Toggle):
     """
     Moonwalk.
+
+    On the maprando.com seed page: Customization > Other customization options > Controller settings > Moonwalk.
     """
     display_name = "Moonwalk"
     field = "moonwalk"

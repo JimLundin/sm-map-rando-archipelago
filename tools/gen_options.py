@@ -494,6 +494,12 @@ def gen_special(spec):
     raise ValueError(kind)
 
 
+def website_place(entry, label=True):
+    """Where the website shows a cosmetic setting, so players can find the option matching what they know."""
+    place = entry["section"].removeprefix("Seed page > ") + (f" > {entry['label']}" if label else "")
+    return f"On the maprando.com seed page: {place}."
+
+
 def gen_customize(spec):
     field, kind, name = spec["field"], spec["kind"], spec["name"]
     cn = class_name(name)
@@ -505,19 +511,19 @@ def gen_customize(spec):
         return cn, "".join([f"class {cn}(OptionSet):\n",
                             docstring(f"{label} button combination",
                                       f"Buttons to press simultaneously for {label.lower()}. " +
-                                      clean(CS[prefix + "left"]["description"])),
+                                      clean(CS[prefix + "left"]["description"]), website_place(e, label=False)),
                             f'    display_name = "{label} buttons"\n', f'    field = "{field}"\n',
                             f"    valid_keys = {BUTTONS!r}\n", f"    default = frozenset({default!r})\n"])
     e = CS[field]
     if kind == "bool":
         base = "DefaultOnToggle" if e["default"] else "Toggle"
-        return cn, "".join([f"class {cn}({base}):\n", docstring(e["label"], e["description"]),
+        return cn, "".join([f"class {cn}({base}):\n", docstring(e["label"], e["description"], website_place(e)),
                             f'    display_name = "{e["label"]}"\n', f'    field = "{field}"\n'])
     if kind == "etank_color":
         lines = [f"class {cn}(TextChoice):\n",
                  docstring(e["label"], e["description"],
                            "One of the website's colors (by hex RGB code), or any other hex RGB code such as "
-                           "'ff0000'."),
+                           "'ff0000'.\n\n" + website_place(e)),
                  f'    display_name = "{e["label"]}"\n', f'    field = "{field}"\n']
         default = None
         for i, c in enumerate(choices_of(e)):
@@ -551,7 +557,7 @@ def gen_customize(spec):
         body = [f"class {cn}(Choice):\n",
                 docstring(e["label"], e["description"] +
                           ("\nSprites: " + ", ".join(f"{c['value']} ({c['label']})" for c in choices)
-                           if name == "samus_sprite" else ""), extra),
+                           if name == "samus_sprite" else ""), "\n\n".join(filter(None, [extra, website_place(e)]))),
                 f'    display_name = "{e["label"]}"\n', f'    field = "{field}"\n'] + lines + [
                    f"    default = {default_index}\n", f"    json_values = {jv!r}\n"]
         return cn, "".join(body)
