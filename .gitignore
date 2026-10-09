@@ -4,7 +4,7 @@ __pycache__/
 *.pyc
 *.sfc
 *.smc
-worlds/sm_map_rando/data/maprando/
-worlds/sm_map_rando/lib/
+worlds/sm_map_rando_upstream/data/maprando/
+worlds/sm_map_rando_upstream/lib/
 tools/bin/
-native/pysmmaprando/target/
+native/pysmmaprando_upstream/target/

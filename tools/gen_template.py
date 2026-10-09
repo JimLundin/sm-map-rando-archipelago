@@ -19,5 +19,5 @@ out_dir = sys.argv[1]
 with tempfile.TemporaryDirectory() as tmp:
     Options.generate_yaml_templates(tmp, False)
     os.makedirs(out_dir, exist_ok=True)
-    shutil.copy2(os.path.join(tmp, "Super Metroid Map Rando.yaml"), out_dir)
-print(f"Wrote {out_dir}/Super Metroid Map Rando.yaml")
+    shutil.copy2(os.path.join(tmp, "Super Metroid Map Rando Upstream.yaml"), out_dir)
+print(f"Wrote {out_dir}/Super Metroid Map Rando Upstream.yaml")

@@ -16,7 +16,7 @@ import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MR = os.path.join(ROOT, "MapRandomizer")
-WORLD = os.path.join(ROOT, "worlds", "sm_map_rando")
+WORLD = os.path.join(ROOT, "worlds", "sm_map_rando_upstream")
 SPRITE_MANIFEST = os.path.join(MR, "MapRandoSprites", "samus_sprites", "manifest.json")
 
 
@@ -52,7 +52,7 @@ def write_versions():
     map_rando_version = open(os.path.join(MR, "rust", "VERSION")).read().strip()
     revision = open(os.path.join(ROOT, "WORLD_REVISION")).read().strip()
     version = f"0.{map_rando_version}.{revision}"
-    cargo = os.path.join(ROOT, "native", "pysmmaprando", "Cargo.toml")
+    cargo = os.path.join(ROOT, "native", "pysmmaprando_upstream", "Cargo.toml")
     s = open(cargo).read()
     s = re.sub(r'(?m)^version = "[^"]*"', f'version = "{version}"', s, count=1)
     open(cargo, "w").write(s)

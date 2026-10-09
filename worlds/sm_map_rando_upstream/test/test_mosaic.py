@@ -28,7 +28,7 @@ def make_archive(path: str) -> None:
 
 
 class FakeModule:
-    """Stands in for pysmmaprando: the test archive isn't compressed, so decompressing is copying."""
+    """Stands in for pysmmaprando_upstream: the test archive isn't compressed, so decompressing is copying."""
     def __init__(self):
         self.during_decompress: Optional[Callable[[], None]] = None
 
@@ -87,6 +87,6 @@ class TestMosaicPatches(unittest.TestCase):
         self.module.during_decompress = native.ensure_mosaic_patches
         native.ensure_mosaic_patches()
         self.assert_patches_in_place()
-        leftovers = [n for n in os.listdir(os.path.join(self.cache, "sm_map_rando", "mosaic", BUILD_ID))
+        leftovers = [n for n in os.listdir(os.path.join(self.cache, "sm_map_rando_upstream", "mosaic", BUILD_ID))
                      if n not in ("patches", f"Mosaic-{BUILD_ID}.tar.zstd")]
         self.assertEqual(leftovers, [])

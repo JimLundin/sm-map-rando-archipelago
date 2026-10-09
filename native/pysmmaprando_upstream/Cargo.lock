@@ -1130,7 +1130,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pysmmaprando"
+name = "pysmmaprando_upstream"
 version = "0.123.2"
 dependencies = [
  "anyhow",

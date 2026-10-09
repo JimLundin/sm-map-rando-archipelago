@@ -23,7 +23,7 @@ SRAM_START = 0xE00000
 
 ROMNAME_START = ROM_START + 0x007FC0
 ROMNAME_SIZE = 0x15
-ROMNAME_PREFIX = b"SMMR"
+ROMNAME_PREFIX = b"SMMU"
 
 SM_INGAME_MODES = {0x08}
 SM_ENDGAME_MODES = {0x26, 0x27}
@@ -52,8 +52,8 @@ def _nothing_bitmask_rom_addr() -> int:
 
 
 class SMMapRandoSNIClient(SNIClient):
-    game = "Super Metroid Map Rando"
-    patch_suffix = ".apsmmr"
+    game = "Super Metroid Map Rando Upstream"
+    patch_suffix = ".apsmmru"
 
     def __init__(self) -> None:
         super().__init__()

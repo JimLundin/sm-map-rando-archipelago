@@ -1,6 +1,6 @@
 """
 Assemble the Archipelago multiworld basepatch for Map Rando (basepatch/romhacks/maprando) into
-worlds/sm_map_rando/data/SMBasepatch_prebuilt, and check that it doesn't overlap Map Rando's own patches.
+worlds/sm_map_rando_upstream/data/SMBasepatch_prebuilt, and check that it doesn't overlap Map Rando's own patches.
 
 The assembler (asar) is built from the MapRandomizer submodule's asar sources if it isn't found (requires CMake and a
 C++ compiler), or can be given with the ASAR environment variable.
@@ -19,7 +19,7 @@ from ips_ranges import ips_ranges, merge, pc2snes  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASEPATCH = os.path.join(ROOT, "basepatch")
-OUT = os.path.join(ROOT, "worlds", "sm_map_rando", "data", "SMBasepatch_prebuilt")
+OUT = os.path.join(ROOT, "worlds", "sm_map_rando_upstream", "data", "SMBasepatch_prebuilt")
 ASAR_BIN = os.path.join(ROOT, "tools", "bin", "asar.exe" if os.name == "nt" else "asar")
 
 # Byte ranges deliberately shared with Map Rando's patches: the copy protection byte (same value), and the hook in

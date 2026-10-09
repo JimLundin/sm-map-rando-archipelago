@@ -302,7 +302,7 @@ def cradio(form, section, typ, mid, notes='', label=None):
 C='Seed page > Customization'
 cadd('rom',C,'Input ROM (vanilla Super Metroid)','other',M['inputRomModal']['body'] if 'inputRomModal' in M else '',default=None,
      notes="File upload field 'rom' (Bytes). Must be the unheadered NTSC USA/JU Super Metroid ROM, SHA-256 12b77c4bc9c1832cee8881244659065ee1d84c70c3d29e6eaf92e6798cc2ca72 (checked client-side and server-side). Not a setting per se; stored in browser localforage.")
-sprites=json.load(open(os.path.join(ROOT, 'worlds', 'sm_map_rando', 'data', 'maprando', 'MapRandoSprites', 'samus_sprites', 'manifest.json')))
+sprites=json.load(open(os.path.join(ROOT, 'worlds', 'sm_map_rando_upstream', 'data', 'maprando', 'MapRandoSprites', 'samus_sprites', 'manifest.json')))
 cadd('samus_sprite',C,'Samus sprite','enum',H('samusSpriteModal'),
      [{'value':s['name'],'label':s['display_name'],'category':c['category_name']} for c in sprites for s in c['sprites']],
      'samus_vanilla',

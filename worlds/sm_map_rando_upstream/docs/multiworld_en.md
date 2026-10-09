@@ -1,10 +1,10 @@
-# Super Metroid Map Rando Setup Guide
+# Super Metroid Map Rando Upstream Setup Guide
 
 ## Required Software
 
 - [Archipelago](https://github.com/ArchipelagoMW/Archipelago/releases) 0.6.6 or newer. Make sure to install the
   `SNI Client`.
-- The `sm_map_rando.apworld` file.
+- The `sm_map_rando_upstream.apworld` file.
 - Hardware or software capable of loading and playing SNES ROM files, and connecting to SNI:
     - snes9x-rr ([snes9x rr](https://github.com/gocha/snes9x-rr/releases)), BizHawk
       ([TASVideos](https://tasvideos.org/BizHawk)) or RetroArch 1.10.1 or newer
@@ -16,8 +16,8 @@
 
 ## Installation
 
-1. Double click `sm_map_rando.apworld` (or copy it into the `custom_worlds` folder of your Archipelago installation).
-2. The first time a Super Metroid Map Rando patch is opened, you will be asked to locate your Super Metroid ROM file.
+1. Double click `sm_map_rando_upstream.apworld` (or copy it into the `custom_worlds` folder of your Archipelago installation).
+2. The first time a Super Metroid Map Rando Upstream patch is opened, you will be asked to locate your Super Metroid ROM file.
 3. If you are using an emulator, assign it as the default program for `.sfc` files, so that it opens automatically.
 
 The world includes the native Map Rando randomizer for Windows (x86-64), Linux (x86-64 and aarch64) and macOS
@@ -34,7 +34,7 @@ guide: [Basic Multiworld Setup Guide](/tutorial/Archipelago/setup/en)
 ### Where do I get a config file?
 
 The Player Options page on the website allows you to configure your options and export a config file from
-them: [Super Metroid Map Rando Player Options Page](/games/Super%20Metroid%20Map%20Rando/player-options). You can also
+them: [Super Metroid Map Rando Upstream Player Options Page](/games/Super%20Metroid%20Map%20Rando%20Upstream/player-options). You can also
 use the "Generate Template Options" command of the Archipelago Launcher.
 
 The options mirror the settings of [maprando.com](https://maprando.com): pick a `settings_preset` and category presets
@@ -43,7 +43,7 @@ The options mirror the settings of [maprando.com](https://maprando.com): pick a 
 the selected preset. For example:
 
 ```yaml
-Super Metroid Map Rando:
+Super Metroid Map Rando Upstream:
   settings_preset: default
   skill_assumptions_preset: hard
   quality_of_life_preset: high
@@ -63,7 +63,7 @@ You can also design your settings on maprando.com and paste the settings JSON in
 
 When you join a multiworld game, you will be asked to provide your config file to whoever is hosting. Once that is done,
 the host will provide you with either a link to download your patch file, or with a zip file containing everyone's patch
-files. Your patch file should have a `.apsmmr` extension.
+files. Your patch file should have a `.apsmmru` extension.
 
 Double click the patch file: this launches the SNI client and creates your ROM in the same place as the patch file.
 The first time, creating the ROM downloads Map Rando's Mosaic tile patches (8 MB), and your Samus sprite if it isn't
@@ -153,15 +153,15 @@ The recommended way to host a game is to use our hosting service. The process is
 
 ## Building the native module
 
-The randomizer is Rust code (the upstream Map Rando crates plus thin Python bindings, `pysmmaprando`). To build it for
+The randomizer is Rust code (the upstream Map Rando crates plus thin Python bindings, `pysmmaprando_upstream`). To build it for
 another platform, install Rust and [maturin](https://www.maturin.rs/), then, in a clone of
 [the world's repository](https://github.com/JimLundin/sm-map-rando-archipelago):
 
 ```
 python tools/prepare_upstream.py
-cd native/pysmmaprando
+cd native/pysmmaprando_upstream
 maturin build --release -o dist
-pip install dist/pysmmaprando-*.whl
+pip install dist/pysmmaprando_upstream-*.whl
 ```
 
-An installed `pysmmaprando` of the right version is used in preference to the bundled ones.
+An installed `pysmmaprando_upstream` of the right version is used in preference to the bundled ones.

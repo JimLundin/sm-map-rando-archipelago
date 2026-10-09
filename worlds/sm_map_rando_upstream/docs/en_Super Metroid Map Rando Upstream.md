@@ -1,4 +1,4 @@
-# Super Metroid Map Rando
+# Super Metroid Map Rando Upstream
 
 ## What is this game?
 
@@ -50,7 +50,7 @@ Spark Booster and Blue Booster (with split Speed Booster). With a reduced item p
 
 Any item can be in another player's world.
 
-## What does another world's item look like in Super Metroid Map Rando?
+## What does another world's item look like in Super Metroid Map Rando Upstream?
 
 With `item_matching: metroid`, items from other Metroid games look like the closest Super Metroid item. Other items
 look like an Archipelago item (with an arrow for progression items). On the map, other worlds' items are marked like

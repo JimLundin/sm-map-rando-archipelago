@@ -1,6 +1,6 @@
 # Publish a release when a version tag (v*) is pushed: builds and tests everything, then uploads the .apworld and the
 # options template. Run the ROM integration test locally before tagging (it needs a Super Metroid ROM):
-#   SMMR_TEST_ROM=/path/to/rom.sfc python -m pytest worlds/sm_map_rando/test/test_rom_integration.py
+#   SMMR_TEST_ROM=/path/to/rom.sfc python -m pytest worlds/sm_map_rando_upstream/test/test_rom_integration.py
 name: Release
 
 on:
@@ -31,6 +31,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version="$(python3 -c 'import json; print(json.load(open("worlds/sm_map_rando/archipelago.json"))["world_version"])')"
-          gh release create "$GITHUB_REF_NAME" dist/sm_map_rando.apworld "dist/Super Metroid Map Rando.yaml" \
-            --title "Super Metroid Map Rando $version for Archipelago" --generate-notes
+          version="$(python3 -c 'import json; print(json.load(open("worlds/sm_map_rando_upstream/archipelago.json"))["world_version"])')"
+          gh release create "$GITHUB_REF_NAME" dist/sm_map_rando_upstream.apworld "dist/Super Metroid Map Rando Upstream.yaml" \
+            --title "Super Metroid Map Rando Upstream $version for Archipelago" --generate-notes

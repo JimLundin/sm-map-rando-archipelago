@@ -53,7 +53,7 @@ jobs:
           fi
           pip install maturin
           # (only to check that it builds and to generate the world: the Build workflow builds the release wheels)
-          (cd native/pysmmaprando && maturin build --profile dev-release -o ../../dist/wheels) > native.log 2>&1 || {
+          (cd native/pysmmaprando_upstream && maturin build --profile dev-release -o ../../dist/wheels) > native.log 2>&1 || {
             echo "**The native module doesn't build:**" >> $report
             echo '```' >> $report; grep -E '^(error|warning: unused)' -A8 native.log | head -80 >> $report; echo '```' >> $report
             exit 0; }
@@ -68,7 +68,7 @@ jobs:
           fi
           echo >> $report
           echo "Before merging and releasing, run the ROM test locally:" >> $report
-          echo '`SMMR_TEST_ROM=/path/to/rom.sfc python -m pytest worlds/sm_map_rando/test/test_rom_integration.py`' >> $report
+          echo '`SMMR_TEST_ROM=/path/to/rom.sfc python -m pytest worlds/sm_map_rando_upstream/test/test_rom_integration.py`' >> $report
       - name: Open a pull request
         if: steps.check.outputs.update == 'true'
         env:
@@ -79,7 +79,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -b "$branch"
           git -C MapRandomizer checkout -q -- . 2>/dev/null; git -C MapRandomizer clean -qfd
-          git add MapRandomizer worlds tools native/pysmmaprando/Cargo.toml native/pysmmaprando/Cargo.lock
+          git add MapRandomizer worlds tools native/pysmmaprando_upstream/Cargo.toml native/pysmmaprando_upstream/Cargo.lock
           git commit -m "Update Map Rando to v$UPSTREAM_VERSION (${{ steps.check.outputs.latest }})"
           git push origin "$branch"
           gh pr create --head "$branch" --title "Update Map Rando to v$UPSTREAM_VERSION" --body-file report.md

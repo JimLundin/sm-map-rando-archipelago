@@ -1,4 +1,4 @@
-"""Archipelago-specific options for Super Metroid Map Rando (not Map Rando settings)."""
+"""Archipelago-specific options for Super Metroid Map Rando Upstream (not Map Rando settings)."""
 from __future__ import annotations
 
 from Options import Choice, DefaultOnToggle, OptionDict, Range, TextChoice, Toggle

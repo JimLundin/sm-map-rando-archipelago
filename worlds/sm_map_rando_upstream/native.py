@@ -1,5 +1,5 @@
 """
-Access to the native Map Rando library (pysmmaprando) and to the Map Rando data files.
+Access to the native Map Rando library (pysmmaprando_upstream) and to the Map Rando data files.
 
 The randomizer itself is the upstream Map Rando Rust code (https://github.com/blkerby/MapRandomizer), compiled
 as a Python extension module. Since Python cannot import extension modules from inside a zip file (.apworld),
@@ -26,7 +26,7 @@ from typing import Any, Callable, Dict, Optional
 
 import Utils
 
-logger = logging.getLogger("Super Metroid Map Rando")
+logger = logging.getLogger("Super Metroid Map Rando Upstream")
 
 from .version import WORLD_VERSION as PYSMMAPRANDO_VERSION  # the native module has the world's version
 GAME_DATA_DIR = "maprando"  # directory within the world's data directory
@@ -51,7 +51,7 @@ def apworld_path() -> Optional[str]:
 
 
 def cache_root() -> str:
-    return Utils.cache_path("sm_map_rando", PYSMMAPRANDO_VERSION)
+    return Utils.cache_path("sm_map_rando_upstream", PYSMMAPRANDO_VERSION)
 
 
 def _content_id() -> str:
@@ -144,7 +144,7 @@ def _find_bundled_wheel() -> Optional[str]:
     else:
         with zipfile.ZipFile(ap) as zf:
             names = [n.split("/")[-1] for n in zf.namelist() if n.endswith(".whl") and "/lib/" in n]
-    names = [n for n in names if n.startswith(f"pysmmaprando-{PYSMMAPRANDO_VERSION}-")]
+    names = [n for n in names if n.startswith(f"pysmmaprando_upstream-{PYSMMAPRANDO_VERSION}-")]
     for prefix, suffix in tags:
         for name in names:
             # the platform tag is the last field of the file name, possibly several tags joined by "."
@@ -159,7 +159,7 @@ def _install_bundled_wheel() -> bool:
     if wheel is None:
         return False
     dest = os.path.join(cache_root(), "lib-" + _content_id())
-    if not os.path.isdir(os.path.join(dest, "pysmmaprando")):
+    if not os.path.isdir(os.path.join(dest, "pysmmaprando_upstream")):
         logger.info("Installing bundled %s to %s", wheel, dest)
         ap = apworld_path()
         if ap is None:
@@ -173,7 +173,7 @@ def _install_bundled_wheel() -> bool:
         try:
             with zipfile.ZipFile(io.BytesIO(data)) as wf:
                 wf.extractall(tmp)
-            _publish_dir(tmp, dest, lambda path: os.path.isdir(os.path.join(path, "pysmmaprando")))
+            _publish_dir(tmp, dest, lambda path: os.path.isdir(os.path.join(path, "pysmmaprando_upstream")))
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
     if dest not in sys.path:
@@ -188,22 +188,23 @@ def get_module():
         if _module is not None:
             return _module
         try:
-            import pysmmaprando  # installed in the Python environment (e.g. from source)
-            if getattr(pysmmaprando, "VERSION", None) != PYSMMAPRANDO_VERSION:
-                raise ImportError(f"pysmmaprando {getattr(pysmmaprando, 'VERSION', '?')} found, "
+            import pysmmaprando_upstream  # installed in the Python environment (e.g. from source)
+            if getattr(pysmmaprando_upstream, "VERSION", None) != PYSMMAPRANDO_VERSION:
+                raise ImportError(f"pysmmaprando_upstream {getattr(pysmmaprando_upstream, 'VERSION', '?')} found, "
                                   f"{PYSMMAPRANDO_VERSION} required")
         except ImportError as e:
-            for name in [m for m in sys.modules if m == "pysmmaprando" or m.startswith("pysmmaprando.")]:
+            for name in [m for m in sys.modules
+                         if m == "pysmmaprando_upstream" or m.startswith("pysmmaprando_upstream.")]:
                 del sys.modules[name]
             if not _install_bundled_wheel():
                 raise RuntimeError(
-                    f"Super Metroid Map Rando requires the native module pysmmaprando {PYSMMAPRANDO_VERSION}, "
-                    f"which is not bundled for this platform ({sys.platform} {platform.machine()}). "
-                    f"It can be built from source with maturin (see the world's setup guide).") from e
-            import pysmmaprando
+                    f"Super Metroid Map Rando Upstream requires the native module pysmmaprando_upstream "
+                    f"{PYSMMAPRANDO_VERSION}, which is not bundled for this platform "
+                    f"({sys.platform} {platform.machine()}). It can be built from source with maturin (see the world's setup guide).") from e
+            import pysmmaprando_upstream
         level = os.getenv("SMMAPRANDO_LOG", "error")
-        pysmmaprando.init_logging(level)
-        _module = pysmmaprando
+        pysmmaprando_upstream.init_logging(level)
+        _module = pysmmaprando_upstream
         return _module
 
 
@@ -213,7 +214,7 @@ def get_map_rando():
     with _lock:
         if _instance is None:
             module = get_module()
-            maps_cache = os.path.join(Utils.cache_path("sm_map_rando"), "maps")
+            maps_cache = os.path.join(Utils.cache_path("sm_map_rando_upstream"), "maps")
             _instance = module.MapRando(data_root(), maps_cache, download)
         return _instance
 
@@ -236,7 +237,7 @@ def ensure_samus_sprite(name: str) -> None:
     dest = os.path.join(data_root(), "patches", "samus_sprites", f"{name}.ips")
     if os.path.exists(dest):
         return
-    cached = os.path.join(Utils.cache_path("sm_map_rando"), "samus_sprites", upstream_commit(), f"{name}.ips")
+    cached = os.path.join(Utils.cache_path("sm_map_rando_upstream"), "samus_sprites", upstream_commit(), f"{name}.ips")
     if not os.path.exists(cached):
         url = (f"https://raw.githubusercontent.com/blkerby/MapRandomizer/{upstream_commit()}"
                f"/patches/samus_sprites/{name}.ips")
@@ -273,7 +274,7 @@ def ensure_mosaic_patches() -> None:
     dest = os.path.join(data_root(), "patches", "mosaic")
     if _has_mosaic_patches(dest, build_id):
         return
-    archive_dir = os.path.join(Utils.cache_path("sm_map_rando"), "mosaic", build_id)
+    archive_dir = os.path.join(Utils.cache_path("sm_map_rando_upstream"), "mosaic", build_id)
     extracted = os.path.join(archive_dir, "patches")
     complete = lambda path: _has_mosaic_patches(path, build_id)
     os.makedirs(archive_dir, exist_ok=True)

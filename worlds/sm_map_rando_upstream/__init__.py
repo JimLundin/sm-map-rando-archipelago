@@ -26,9 +26,9 @@ from .settings_builder import build_customize_settings, build_randomizer_setting
 from .OptionPresets import OPTION_GROUPS, OPTIONS_PRESETS
 from .Rom import ROM_PLAYERDATA_COUNT, SMJUHASH, SMMapRandoProcedurePatch, build_ap_data, credits_text
 
-logger = logging.getLogger("Super Metroid Map Rando")
+logger = logging.getLogger("Super Metroid Map Rando Upstream")
 
-GAME_NAME = "Super Metroid Map Rando"
+GAME_NAME = "Super Metroid Map Rando Upstream"
 
 
 class SMMapRandoSettings(settings.Group):
@@ -45,7 +45,7 @@ class SMMapRandoWeb(WebWorld):
     theme = "ice"
     tutorials = [Tutorial(
         "Multiworld Setup Guide",
-        "A guide to setting up Super Metroid Map Rando for Archipelago multiworld games.",
+        "A guide to setting up Super Metroid Map Rando Upstream for Archipelago multiworld games.",
         "English",
         "multiworld_en.md",
         "multiworld/en",
@@ -87,7 +87,7 @@ class SMMapRandoWorld(World):
     options_dataclass = SMMROptions
     options: SMMROptions
     settings: ClassVar[SMMapRandoSettings]
-    settings_key = "sm_map_rando_options"
+    settings_key = "sm_map_rando_upstream_options"
     web = SMMapRandoWeb()
     topology_present = True
 
@@ -129,12 +129,12 @@ class SMMapRandoWorld(World):
             for world in members[1:]:
                 for key in ("map_layout",):
                     if world.rando_settings[key] != reference.rando_settings[key]:
-                        raise OptionError(f"Super Metroid Map Rando: players {reference.player_name} and "
+                        raise OptionError(f"Super Metroid Map Rando Upstream: players {reference.player_name} and "
                                           f"{world.player_name} share a map layout but have different "
                                           f"'{key}' settings.")
                 if (world.rando_settings["other_settings"]["area_assignment"]
                         != reference.rando_settings["other_settings"]["area_assignment"]):
-                    raise OptionError(f"Super Metroid Map Rando: players {reference.player_name} and "
+                    raise OptionError(f"Super Metroid Map Rando Upstream: players {reference.player_name} and "
                                       f"{world.player_name} share a map layout but have different area assignment "
                                       f"settings.")
             cls.randomize_group(multiworld, members)
@@ -166,9 +166,9 @@ class SMMapRandoWorld(World):
                     world.run_randomizer(shared, allow_retry=False)
                 return
             except MapRandoGenerationError as e:
-                logger.info(f"Super Metroid Map Rando: shared map attempt {attempt + 1} failed for player "
+                logger.info(f"Super Metroid Map Rando Upstream: shared map attempt {attempt + 1} failed for player "
                             f"{world.player_name} ({e}), trying another map")
-        raise Exception(f"Super Metroid Map Rando failed to generate games with a shared map for players "
+        raise Exception(f"Super Metroid Map Rando Upstream failed to generate games with a shared map for players "
                         f"{', '.join(w.player_name for w in members)} after {max_tries} maps.")
 
     def prepare_settings(self) -> None:
@@ -178,7 +178,8 @@ class SMMapRandoWorld(World):
         except OptionError:
             raise
         except Exception as e:
-            raise OptionError(f"Super Metroid Map Rando: invalid settings for player {self.player_name}: {e}") from e
+            raise OptionError(f"Super Metroid Map Rando Upstream: invalid settings for player {self.player_name}: "
+                              f"{e}") from e
 
     def run_randomizer(self, shared: Optional[Dict[str, Any]], allow_retry: bool = True) -> None:
         kwargs: Dict[str, Any] = {}
@@ -196,7 +197,7 @@ class SMMapRandoWorld(World):
             self.rando_output = native.randomize(self.rando_settings, seed, **kwargs)
         except Exception as e:
             if "forbidden_start_locations" in kwargs:
-                logger.warning(f"Super Metroid Map Rando: could not find a unique start location for player "
+                logger.warning(f"Super Metroid Map Rando Upstream: could not find a unique start location for player "
                                f"{self.player_name}, allowing a shared one ({e})")
                 del kwargs["forbidden_start_locations"]
                 try:
@@ -206,10 +207,10 @@ class SMMapRandoWorld(World):
             elif shared is not None and not allow_retry:
                 raise MapRandoGenerationError(str(e)) from e
             else:
-                raise Exception(f"Super Metroid Map Rando failed to generate a game for player {self.player_name}: "
-                                f"{e}. The settings may be too restrictive (for example, a low skill assumptions "
-                                f"preset combined with collectible wall jump or beam doors and the ship start "
-                                f"location); try a random start location or a higher skill preset.") from e
+                raise Exception(f"Super Metroid Map Rando Upstream failed to generate a game for player "
+                                f"{self.player_name}: {e}. The settings may be too restrictive (for example, a low "
+                                f"skill assumptions preset combined with collectible wall jump or beam doors and the "
+                                f"ship start location); try a random start location or a higher skill preset.") from e
         if used_starts is not None:
             used_starts.append(self.rando_output["start_location_name"])
 
@@ -396,8 +397,8 @@ class SMMapRandoWorld(World):
                 player_ids.add(location.player)
         ids = sorted(player_ids)
         if len(ids) > ROM_PLAYERDATA_COUNT:
-            logger.warning(f"Super Metroid Map Rando: player {self.player_name} interacts with too many players to "
-                           f"fit in ROM; some received-from names will show as Archipelago.")
+            logger.warning(f"Super Metroid Map Rando Upstream: player {self.player_name} interacts with too many "
+                           f"players to fit in ROM; some received-from names will show as Archipelago.")
             keep = {0, self.player} | {x[5] for x in location_items}
             ids = sorted(keep | set(i for i in ids if i not in keep)[:max(0, ROM_PLAYERDATA_COUNT - len(keep))]) \
                 if len(keep) <= ROM_PLAYERDATA_COUNT else sorted(keep)[:ROM_PLAYERDATA_COUNT]
@@ -436,7 +437,7 @@ class SMMapRandoWorld(World):
             randomization["essential_spoiler_data"]["item_spoiler_info"] = self.credits_spoiler_info()
 
             from Utils import __version__
-            self.rom_name = (f"SMMR{__version__.replace('.', '')[:3]}_{self.player}_"
+            self.rom_name = (f"SMMU{__version__.replace('.', '')[:3]}_{self.player}_"
                              f"{self.multiworld.seed:011}").encode("ascii")[:21]
             data = {
                 "settings": self.rando_settings,

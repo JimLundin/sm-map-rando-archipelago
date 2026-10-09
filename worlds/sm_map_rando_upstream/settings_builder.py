@@ -282,7 +282,7 @@ def base_settings(world: "SMMapRandoWorld") -> Dict[str, Any]:
         try:
             return native.upgrade_settings(copy.deepcopy(dict(options.map_rando_settings.value)))
         except Exception as e:
-            raise OptionError(f"Super Metroid Map Rando: invalid map_rando_settings for player "
+            raise OptionError(f"Super Metroid Map Rando Upstream: invalid map_rando_settings for player "
                               f"{world.player_name}: {e}") from e
     preset_name = options.settings_preset.preset_names[options.settings_preset.value]
     settings = load_preset("full-settings", preset_name)
@@ -377,8 +377,8 @@ def build_randomizer_settings(world: "SMMapRandoWorld") -> Dict[str, Any]:
             counts = item_counts(items[list_key], default_unique)
             for item, count in option.value.items():
                 if item in UNIQUE_ITEMS and count > 1:
-                    raise OptionError(f"Super Metroid Map Rando: {option.__class__.__name__} for {item} must be "
-                                      f"0 or 1 (player {world.player_name})")
+                    raise OptionError(f"Super Metroid Map Rando Upstream: {option.__class__.__name__} for {item} "
+                                      f"must be 0 or 1 (player {world.player_name})")
                 counts[item] = count
             items[list_key] = [{"item": k, "count": v} for k, v in counts.items()]
     for option, list_key in [(world.options.key_item_priority, "key_item_priority"),
@@ -395,13 +395,13 @@ def build_randomizer_settings(world: "SMMapRandoWorld") -> Dict[str, Any]:
         if name:
             matches = [s for s in start_locations() if s["name"].casefold() == name.casefold()]
             if not matches:
-                raise OptionError(f"Super Metroid Map Rando: unknown custom_start_location {name!r} for player "
-                                  f"{world.player_name}")
+                raise OptionError(f"Super Metroid Map Rando Upstream: unknown custom_start_location {name!r} for "
+                                  f"player {world.player_name}")
             start["room_id"] = matches[0]["room_id"]
             start["node_id"] = matches[0]["node_id"]
         elif start.get("room_id") is None:
-            raise OptionError(f"Super Metroid Map Rando: start_location is 'custom' but no custom_start_location "
-                              f"is given (player {world.player_name})")
+            raise OptionError(f"Super Metroid Map Rando Upstream: start_location is 'custom' but no "
+                              f"custom_start_location is given (player {world.player_name})")
     else:
         start["room_id"] = None
         start["node_id"] = None
@@ -472,6 +472,6 @@ def build_customize_settings(world: "SMMapRandoWorld") -> Dict[str, Any]:
 
     color = out.get("etank_color", "")
     if len(color) != 6 or any(c not in "0123456789abcdef" for c in color):
-        raise OptionError(f"Super Metroid Map Rando: invalid etank_color {color!r} (expected a hex RGB code such as "
-                          f"'de3894') for player {world.player_name}")
+        raise OptionError(f"Super Metroid Map Rando Upstream: invalid etank_color {color!r} (expected a hex RGB "
+                          f"code such as 'de3894') for player {world.player_name}")
     return out

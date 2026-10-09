@@ -32,7 +32,7 @@ jobs:
         run: python tools/prepare_upstream.py
       - uses: PyO3/maturin-action@v1
         with:
-          working-directory: native/pysmmaprando
+          working-directory: native/pysmmaprando_upstream
           target: ${{ matrix.target }}
           manylinux: ${{ matrix.manylinux || 'auto' }}
           args: --release --strip --out ../../dist/wheels
@@ -56,7 +56,7 @@ jobs:
           path: dist/wheels
           merge-multiple: true
       - name: Install the native module
-        run: pip install dist/wheels/pysmmaprando-*manylinux*x86_64*.whl
+        run: pip install dist/wheels/pysmmaprando_upstream-*manylinux*x86_64*.whl
       - name: Build the world
         run: python tools/build_apworld.py
       - name: Check that generated files are up to date
@@ -67,7 +67,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: apworld
-          path: dist/sm_map_rando.apworld
+          path: dist/sm_map_rando_upstream.apworld
 
   test:
     name: Test (Archipelago)
@@ -91,12 +91,12 @@ jobs:
           git clone --depth 1 --branch "$ARCHIPELAGO_VERSION" https://github.com/ArchipelagoMW/Archipelago.git ../Archipelago
           pip install -r ../Archipelago/requirements.txt pytest pytest-subtests
           pip install wheels/*.whl
-          unzip -q sm_map_rando.apworld -d ../Archipelago/worlds
+          unzip -q sm_map_rando_upstream.apworld -d ../Archipelago/worlds
       - name: Run the world's tests
         working-directory: ../Archipelago
         env:
           SKIP_REQUIREMENTS_UPDATE: "1"
-        run: python -m pytest worlds/sm_map_rando/test -q
+        run: python -m pytest worlds/sm_map_rando_upstream/test -q
       - name: Generate the options template
         working-directory: ../Archipelago
         env:
@@ -105,4 +105,4 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: template
-          path: dist/Super Metroid Map Rando.yaml
+          path: dist/Super Metroid Map Rando Upstream.yaml

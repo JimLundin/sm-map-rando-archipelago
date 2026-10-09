@@ -35,7 +35,7 @@ class TestApplyArchipelago(unittest.TestCase):
                 locations.append([loc["bit_index"], 0, 1, False, "Missile", 1])
         ap = {"player_ids": [0, 1, 2, 3], "player_names": ["Archipelago", "Me", "Link", "Samus"],
               "locations": locations, "own_player_id": 1, "death_link": 1, "remote_items": False}
-        apply_archipelago(rom, base, ap, b"SMMR068_1_00000000042")
+        apply_archipelago(rom, base, ap, b"SMMU068_1_00000000042")
         write_checksum(rom)
         sym = get_symbols()
 
@@ -55,7 +55,7 @@ class TestApplyArchipelago(unittest.TestCase):
         nothing = read("locations_nothing", 0, 20)
         bit = LOCATIONS[0]["bit_index"]
         self.assertTrue(nothing[bit // 8] & (1 << (bit % 8)))
-        self.assertEqual(bytes(rom[0x7FC0:0x7FC0 + 4]), b"SMMR")
+        self.assertEqual(bytes(rom[0x7FC0:0x7FC0 + 4]), b"SMMU")
 
     def test_incompatible_layout_rejected(self):
         base, rom = synthetic_roms()
@@ -63,4 +63,4 @@ class TestApplyArchipelago(unittest.TestCase):
         rom[snes_to_pc(addr)] = 0
         with self.assertRaises(Exception):
             apply_archipelago(rom, base, {"player_ids": [0], "player_names": ["Archipelago"], "locations": [],
-                                          "own_player_id": 1, "death_link": 0, "remote_items": False}, b"SMMR")
+                                          "own_player_id": 1, "death_link": 0, "remote_items": False}, b"SMMU")

@@ -1,4 +1,4 @@
-//! Python bindings to the Map Randomizer, used by the Archipelago "Super Metroid Map Rando" world.
+//! Python bindings to the Map Randomizer, used by the Archipelago "Super Metroid Map Rando Upstream" world.
 //!
 //! The interface is deliberately coarse-grained and JSON based: settings, randomizations and
 //! customization settings cross the boundary as JSON strings using exactly the same formats as
@@ -772,7 +772,7 @@ fn init_logging(level: &str) {
 }
 
 #[pymodule]
-fn pysmmaprando(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn pysmmaprando_upstream(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<MapRando>()?;
     m.add_function(wrap_pyfunction!(zstd_decompress_file, m)?)?;
     m.add_function(wrap_pyfunction!(init_logging, m)?)?;

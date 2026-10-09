@@ -16,7 +16,7 @@ import rust_schema
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MR = os.path.join(ROOT, "MapRandomizer")
-GAME_DATA = os.path.join(ROOT, "worlds", "sm_map_rando", "data", "maprando")
+GAME_DATA = os.path.join(ROOT, "worlds", "sm_map_rando_upstream", "data", "maprando")
 CATALOG = os.path.join(ROOT, "tools", "settings_catalog.json")
 
 
@@ -41,8 +41,8 @@ def map_layouts():
 @functools.lru_cache(maxsize=None)
 def presets():
     """The presets as loaded by Map Rando: {"full": [...], "skill": [...], ...} (JSON values), in website order."""
-    import pysmmaprando
-    mr = pysmmaprando.MapRando(GAME_DATA, os.path.join(ROOT, "dist", "maps-cache"),
+    import pysmmaprando_upstream
+    mr = pysmmaprando_upstream.MapRando(GAME_DATA, os.path.join(ROOT, "dist", "maps-cache"),
                                lambda url, dest: urllib.request.urlretrieve(url, dest))
     return json.loads(mr.presets_json())
 

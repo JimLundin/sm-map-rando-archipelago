@@ -1,5 +1,5 @@
 """
-ROM patching for Super Metroid Map Rando.
+ROM patching for Super Metroid Map Rando Upstream.
 
 At generation time, the world writes everything needed to build the ROM into the patch file (`rando_data.json`):
 Map Rando settings, the randomization (with the item placement adjusted for Archipelago items), cosmetic settings,
@@ -41,7 +41,7 @@ def snes_to_pc(address: int) -> int:
 def get_base_rom_path(file_name: str = "") -> str:
     options: settings.Settings = settings.get_settings()
     if not file_name:
-        file_name = options.sm_map_rando_options.rom_file
+        file_name = options.sm_map_rando_upstream_options.rom_file
     if not os.path.exists(file_name):
         file_name = Utils.user_path(file_name)
     return file_name
@@ -126,8 +126,8 @@ def build_ap_data(world: "SMMapRandoWorld", location_items: List[Tuple[int, int,
 
 class SMMapRandoProcedurePatch(APProcedurePatch):
     hash = SMJUHASH
-    game = "Super Metroid Map Rando"
-    patch_file_ending = ".apsmmr"
+    game = "Super Metroid Map Rando Upstream"
+    patch_file_ending = ".apsmmru"
     result_file_ending = ".sfc"
 
     procedure = [
@@ -243,7 +243,7 @@ def apply_archipelago(rom: bytearray, base_rom: bytes, ap: Dict[str, Any], rom_n
 
 
 class SMMapRandoPatchExtensions(APPatchExtension):
-    game = "Super Metroid Map Rando"
+    game = "Super Metroid Map Rando Upstream"
 
     @staticmethod
     def patch_rom(caller: APProcedurePatch, rom: bytes, rando_data_file: str) -> bytes:

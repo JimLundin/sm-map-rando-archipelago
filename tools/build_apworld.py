@@ -1,5 +1,5 @@
 """
-Build the Super Metroid Map Rando world from the MapRandomizer submodule and this repository:
+Build the Super Metroid Map Rando Upstream world from the MapRandomizer submodule and this repository:
   1. prepare the submodule (patches, version files)       tools/prepare_upstream.py
   2. copy the Map Rando game data into the world
   3. extract the website labels/help texts                 tools/catalog/build_catalog.py
@@ -7,10 +7,10 @@ Build the Super Metroid Map Rando world from the MapRandomizer submodule and thi
   5. check upstream code mirrored by hand                  tools/upstream_checks.py
   6. assemble the AP basepatch                             tools/build_basepatch.py
   7. generate the location tables
-  8. copy the native wheels (dist/wheels) and zip the .apworld (dist/sm_map_rando.apworld)
+  8. copy the native wheels (dist/wheels) and zip the .apworld (dist/sm_map_rando_upstream.apworld)
 
-The native module (pysmmaprando) for the current platform must be installed (see native/pysmmaprando), since steps 4
-and 7 use Map Rando itself to read its presets and item locations.
+The native module (pysmmaprando_upstream) for the current platform must be installed (see
+native/pysmmaprando_upstream), since steps 4 and 7 use Map Rando itself to read its presets and item locations.
 
 Usage: python tools/build_apworld.py [--skip-data] [--no-zip] [--allow-upstream-changes]
 """
@@ -25,7 +25,7 @@ import zipfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MR = os.path.join(ROOT, "MapRandomizer")
-WORLD = os.path.join(ROOT, "worlds", "sm_map_rando")
+WORLD = os.path.join(ROOT, "worlds", "sm_map_rando_upstream")
 DATA = os.path.join(WORLD, "data")
 GAME_DATA = os.path.join(DATA, "maprando")
 WHEELS = os.path.join(ROOT, "dist", "wheels")
@@ -82,8 +82,8 @@ def build_tables():
     """Static tables that must be known at import time (location names and ids)."""
     sys.path.insert(0, WORLD)
     import urllib.request
-    import pysmmaprando
-    mr = pysmmaprando.MapRando(GAME_DATA, os.path.join(ROOT, "dist", "maps-cache"),
+    import pysmmaprando_upstream
+    mr = pysmmaprando_upstream.MapRando(GAME_DATA, os.path.join(ROOT, "dist", "maps-cache"),
                                lambda url, dest: urllib.request.urlretrieve(url, dest))
     locations = json.loads(mr.item_locations())
     # The location id is based on the vanilla item "bit index" (the PLM room argument), which is how the AP
@@ -115,12 +115,12 @@ def copy_wheels():
     lib = os.path.join(WORLD, "lib")
     shutil.rmtree(lib, ignore_errors=True)
     os.makedirs(lib)
-    for whl in glob.glob(os.path.join(WHEELS, "pysmmaprando-*.whl")):
+    for whl in glob.glob(os.path.join(WHEELS, "pysmmaprando_upstream-*.whl")):
         shutil.copy2(whl, lib)
 
 
 def make_zip():
-    out = os.path.join(ROOT, "dist", "sm_map_rando.apworld")
+    out = os.path.join(ROOT, "dist", "sm_map_rando_upstream.apworld")
     if os.path.exists(out):
         os.remove(out)
     manifest = json.load(open(os.path.join(WORLD, "archipelago.json")))
@@ -128,7 +128,7 @@ def make_zip():
     manifest["version"] = 7
     manifest["compatible_version"] = 7
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
-        zf.writestr("sm_map_rando/archipelago.json", json.dumps(manifest, indent=4))
+        zf.writestr("sm_map_rando_upstream/archipelago.json", json.dumps(manifest, indent=4))
         for dirpath, dirnames, filenames in os.walk(WORLD):
             dirnames[:] = [d for d in dirnames if d != "__pycache__"]
             for fn in filenames:

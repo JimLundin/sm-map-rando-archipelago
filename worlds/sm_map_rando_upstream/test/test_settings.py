@@ -8,7 +8,7 @@ from worlds.AutoWorld import AutoWorldRegister
 from .. import settings_builder
 from ..settings_builder import canonical, load_preset
 
-GAME = "Super Metroid Map Rando"
+GAME = "Super Metroid Map Rando Upstream"
 
 
 def make_world(**options):

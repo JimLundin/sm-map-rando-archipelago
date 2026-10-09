@@ -1,6 +1,6 @@
 # Domain glossary
 
-Terms used across the Super Metroid Map Rando world. Keep code, docs and reviews consistent with these.
+Terms used across the Super Metroid Map Rando Upstream world. Keep code, docs and reviews consistent with these.
 
 **Item location** — one of Map Rando's 100 item locations. It has three identities:
 - `index`, its position in Map Rando's `item_placement`
