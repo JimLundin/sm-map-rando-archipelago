@@ -22,7 +22,7 @@ import tempfile
 import threading
 import urllib.request
 import zipfile
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 
 import Utils
 
@@ -63,21 +63,35 @@ def _content_id() -> str:
     return hashlib.sha1(f"{ap}:{st.st_size}:{st.st_mtime_ns}".encode()).hexdigest()[:16]
 
 
+def _publish_dir(tmp: str, dest: str, is_complete: Callable[[str], bool]) -> None:
+    """Move the complete directory tmp to dest. Another process may have got there first (a patch file opened twice
+    starts two clients); a dest that isn't complete is left over from an interrupted copy."""
+    if os.path.isdir(dest) and not is_complete(dest):
+        shutil.rmtree(dest, ignore_errors=True)
+    try:
+        os.replace(tmp, dest)
+    except OSError:
+        if not is_complete(dest):
+            raise
+
+
 def _extract_from_apworld(member_prefix: str, dest: str) -> None:
     ap = apworld_path()
     assert ap is not None
-    tmp = dest + ".tmp"
-    shutil.rmtree(tmp, ignore_errors=True)
-    with zipfile.ZipFile(ap) as zf:
-        for name in zf.namelist():
-            if name.startswith(member_prefix) and not name.endswith("/"):
-                rel = name[len(member_prefix):]
-                target = os.path.join(tmp, *rel.split("/"))
-                os.makedirs(os.path.dirname(target), exist_ok=True)
-                with zf.open(name) as src, open(target, "wb") as dst:
-                    shutil.copyfileobj(src, dst)
-    shutil.rmtree(dest, ignore_errors=True)
-    os.replace(tmp, dest)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    tmp = tempfile.mkdtemp(dir=os.path.dirname(dest), prefix=".extract-")
+    try:
+        with zipfile.ZipFile(ap) as zf:
+            for name in zf.namelist():
+                if name.startswith(member_prefix) and not name.endswith("/"):
+                    rel = name[len(member_prefix):]
+                    target = os.path.join(tmp, *rel.split("/"))
+                    os.makedirs(os.path.dirname(target), exist_ok=True)
+                    with zf.open(name) as src, open(target, "wb") as dst:
+                        shutil.copyfileobj(src, dst)
+        _publish_dir(tmp, dest, os.path.isdir)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
 
 
 def data_root() -> str:
@@ -154,12 +168,14 @@ def _install_bundled_wheel() -> bool:
             world_folder = os.path.basename(world_dir())
             with zipfile.ZipFile(ap) as zf:
                 data = zf.read(f"{world_folder}/lib/{wheel}")
-        tmp = dest + ".tmp"
-        shutil.rmtree(tmp, ignore_errors=True)
-        with zipfile.ZipFile(io.BytesIO(data)) as wf:
-            wf.extractall(tmp)
-        shutil.rmtree(dest, ignore_errors=True)
-        os.replace(tmp, dest)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        tmp = tempfile.mkdtemp(dir=os.path.dirname(dest), prefix=".install-")
+        try:
+            with zipfile.ZipFile(io.BytesIO(data)) as wf:
+                wf.extractall(tmp)
+            _publish_dir(tmp, dest, lambda path: os.path.isdir(os.path.join(path, "pysmmaprando")))
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
     if dest not in sys.path:
         sys.path.insert(0, dest)
     return True
@@ -239,30 +255,57 @@ def mosaic_build_id() -> str:
         return zf.read(f"{os.path.basename(world_dir())}/data/MOSAIC_BUILD_ID").decode().strip()
 
 
+MOSAIC_MARKER = "MOSAIC_BUILD_ID"  # in a complete set of Mosaic patches, the build they come from
+
+
+def _has_mosaic_patches(path: str, build_id: str) -> bool:
+    try:
+        with open(os.path.join(path, MOSAIC_MARKER)) as f:
+            return f.read().strip() == build_id
+    except OSError:
+        return False
+
+
 def ensure_mosaic_patches() -> None:
-    """Make sure the Mosaic tile theme patches are available (downloading them if necessary)."""
-    dest = os.path.join(data_root(), "patches", "mosaic")
-    if os.path.isdir(dest) and os.listdir(dest):
-        return
+    """Make sure the Mosaic tile theme patches are available (downloading them if necessary). Several processes can
+    run this at once: each works in its own temporary directory, and publishes it whole."""
     build_id = mosaic_build_id()
+    dest = os.path.join(data_root(), "patches", "mosaic")
+    if _has_mosaic_patches(dest, build_id):
+        return
     archive_dir = os.path.join(Utils.cache_path("sm_map_rando"), "mosaic", build_id)
     extracted = os.path.join(archive_dir, "patches")
-    if not os.path.isdir(extracted):
+    complete = lambda path: _has_mosaic_patches(path, build_id)
+    os.makedirs(archive_dir, exist_ok=True)
+    if not complete(extracted):
         archive = os.path.join(archive_dir, f"Mosaic-{build_id}.tar.zstd")
         if not os.path.exists(archive):
             url = f"https://map-rando-artifacts.s3.us-west-004.backblazeb2.com/Mosaic/Mosaic-{build_id}.tar.zstd"
             logger.info("Downloading Mosaic tile theme patches from %s", url)
-            download(url, archive)
-        tar_path = archive[:-len(".zstd")]
-        get_module().zstd_decompress_file(archive, tar_path)
-        tmp = extracted + ".tmp"
-        shutil.rmtree(tmp, ignore_errors=True)
-        with tarfile.open(tar_path) as tf:
-            tf.extractall(tmp, filter="data")
-        os.remove(tar_path)
-        os.replace(tmp, extracted)
-    shutil.rmtree(dest, ignore_errors=True)
-    shutil.copytree(extracted, dest)
+            try:
+                download(url, archive)
+            except OSError:
+                if not os.path.exists(archive):  # else downloaded by another process, which may be reading it
+                    raise
+        work = tempfile.mkdtemp(dir=archive_dir, prefix=".extract-")
+        try:
+            tar_path = os.path.join(work, "Mosaic.tar")
+            get_module().zstd_decompress_file(archive, tar_path)
+            patches = os.path.join(work, "patches")
+            with tarfile.open(tar_path) as tf:
+                tf.extractall(patches, filter="data")
+            with open(os.path.join(patches, MOSAIC_MARKER), "w") as f:
+                f.write(build_id)
+            _publish_dir(patches, extracted, complete)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    work = tempfile.mkdtemp(dir=os.path.dirname(dest), prefix=".mosaic-")
+    try:
+        shutil.copytree(extracted, os.path.join(work, "mosaic"))
+        _publish_dir(os.path.join(work, "mosaic"), dest, complete)
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
 
 
 def randomize(settings: Dict[str, Any], random_seed: int, **kwargs) -> Dict[str, Any]:
