@@ -1,7 +1,9 @@
-"""Build dist/smmr.apworld: the world package, the engine binaries and Map Rando's data.
+"""Build dist/smmr.apworld: the world package, the engine module for each platform, and Map Rando's data.
 
-    python tools/build_apworld.py                       # this platform's engine (engine/target/release)
-    python tools/build_apworld.py --engine linux-x86_64=path/to/smmr-engine --engine win32-amd64=...  # CI
+    uv run tools/dev.py apworld                          # this platform's engine, built --release
+    uv run tools/build_apworld.py --engine linux-x86_64=smmr_engine-...whl --engine win32-amd64=...  # CI
+
+An engine is a maturin wheel or the module file itself (smmr_engine.abi3.so, smmr_engine.pyd).
 
 Map Rando's data is the part of the MapRandomizer checkout the engine reads (`tools/fetch_data.py` first, for the
 Mosaic patches): it goes into `data/engine-data.zip`, which the world extracts to Archipelago's cache.
@@ -45,6 +47,15 @@ def engine_data_zip(data_root: Path) -> bytes:
     return buffer.getvalue()
 
 
+def module_file(path: Path) -> bytes:
+    """The engine module from a wheel, or the module file."""
+    if path.suffix != ".whl":
+        return path.read_bytes()
+    with zipfile.ZipFile(path) as wheel:
+        [name] = [n for n in wheel.namelist() if n.startswith("smmr_engine/") and n.endswith((".so", ".pyd"))]
+        return wheel.read(name)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--engine", action="append", default=[], metavar="PLATFORM=PATH")
@@ -52,10 +63,9 @@ def main() -> None:
     parser.add_argument("-o", type=Path, default=ROOT / "dist" / "smmr.apworld")
     args = parser.parse_args()
 
-    from core.engine import platform_tag
-    engines = dict(spec.split("=", 1) for spec in args.engine) or {
-        platform_tag(): str(ROOT / "engine" / "target" / "release" /
-                            ("smmr-engine.exe" if sys.platform == "win32" else "smmr-engine"))}
+    engines = dict(spec.split("=", 1) for spec in args.engine)
+    if not engines:
+        sys.exit("give the engine for each platform: --engine PLATFORM=WHEEL (uv run tools/dev.py apworld does)")
     args.o.parent.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(args.o, "w", zipfile.ZIP_DEFLATED) as zf:
         for file in sorted(WORLD.rglob("*")):
@@ -69,8 +79,8 @@ def main() -> None:
         zf.writestr("smmr/archipelago.json", json.dumps(manifest, indent=4))
         zf.writestr("smmr/data/engine-data.zip", engine_data_zip(args.data), zipfile.ZIP_STORED)
         for tag, path in engines.items():
-            name = "smmr-engine.exe" if tag.startswith("win32") else "smmr-engine"
-            zf.write(path, f"smmr/bin/{tag}/{name}")
+            name = "smmr_engine.pyd" if tag.startswith("win32") else "smmr_engine.abi3.so"   # as runtime.MODULE_FILE
+            zf.writestr(f"smmr/bin/{tag}/{name}", module_file(Path(path)))
     print(f"{args.o}: {args.o.stat().st_size / 1e6:.1f} MB, engines for {', '.join(engines)}")
 
 

@@ -21,13 +21,14 @@ import time
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, assert_never
+from typing import assert_never
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / "world/smmr")]
 
 from core.catalog import Catalog  # noqa: E402
-from core.engine import JsonObject, SubprocessEngine  # noqa: E402
+from core.engine import JsonObject, NativeEngine  # noqa: E402
+from local_engine import local_engine  # noqa: E402
 from core.options import OptionValues, build_settings  # noqa: E402
 
 CHAIN = bool(os.environ.get("CHAIN"))
@@ -71,7 +72,7 @@ def describe(mismatch: Mismatch) -> str:
             assert_never(mismatch)
 
 
-def check(engine: SubprocessEngine, catalog: Catalog, settings: JsonObject, seed: JsonObject) -> list[Mismatch]:
+def check(engine: NativeEngine, catalog: Catalog, settings: JsonObject, seed: JsonObject) -> list[Mismatch]:
     """`reach` against the steps of Map Rando's placement in `seed` (the engine's `randomize`)."""
     randomization = seed["randomization"]
     world = {field: randomization[field] for field in WORLD_FIELDS} | {"hub": seed["spoiler"]["hub"]}
@@ -88,8 +89,7 @@ def check(engine: SubprocessEngine, catalog: Catalog, settings: JsonObject, seed
                 have[entry["item"]] += 1
         expected.append(frozenset(seen))
     inventories.append(dict(have))
-    answers: list[dict[str, Any]] = engine.call(
-        "reach", {"settings": settings, "world": world, "inventories": inventories, "chain": CHAIN})
+    answers = engine.reach_unsessioned({"settings": settings, "world": world, "inventories": inventories, "chain": CHAIN})
     real = frozenset(i for i, item in enumerate(randomization["item_placement"]) if item != "Nothing")
     reached = [frozenset(answer["locations"]) for answer in answers]
     mismatches: list[Mismatch] = []
@@ -120,7 +120,7 @@ def main() -> None:
     info = json.loads((ROOT / "world/smmr/data/info.json").read_text())
     catalog = Catalog.from_info(info)
     presets: dict[str, JsonObject] = json.loads((ROOT / "world/smmr/data/presets.json").read_text())
-    engine = SubprocessEngine(ROOT / "engine/target/dev-release/smmr-engine", ROOT / "MapRandomizer")
+    engine = local_engine()
     if len(sys.argv) > 1 and sys.argv[1].endswith(".json"):
         saved = json.loads(Path(sys.argv[1]).read_text())
         print([describe(m) for m in check(engine, catalog, saved["settings"], saved["seed"])])

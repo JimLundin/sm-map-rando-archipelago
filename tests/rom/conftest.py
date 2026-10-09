@@ -19,7 +19,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 from core import mwpatch  # noqa: E402
 from core.abi import Abi  # noqa: E402
 from core.catalog import Catalog  # noqa: E402
-from core.engine import SubprocessEngine  # noqa: E402
+from local_engine import local_engine  # noqa: E402
 
 CORE = os.environ.get("SMMR_SNES_CORE", "/tmp/snes9x/libretro/snes9x_libretro.so")
 VANILLA = os.environ.get("SMMR_TEST_ROM")
@@ -35,7 +35,7 @@ def abi() -> Abi:
 def map_rando_rom() -> bytes:
     if not VANILLA or not Path(CORE).exists():
         pytest.skip("needs SMMR_TEST_ROM and a libretro SNES core (SMMR_SNES_CORE)")
-    engine = SubprocessEngine(ROOT / "engine/target/dev-release/smmr-engine", ROOT / "MapRandomizer")
+    engine = local_engine()
     settings = json.loads((ROOT / "fixtures/settings/default-vanilla.upgraded.json").read_text())
     seed = json.loads((ROOT / "fixtures/seeds/default-vanilla-1.json").read_text())
     with tempfile.TemporaryDirectory() as tmp:

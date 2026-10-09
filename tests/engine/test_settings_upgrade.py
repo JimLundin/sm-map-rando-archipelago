@@ -1,5 +1,5 @@
 """S1's settings through the real engine's upgrade: every option value is settings Map Rando accepts, and the
-upgraded settings are what the option asked for. Needs the engine build (`make engine`)."""
+upgraded settings are what the option asked for. Needs the engine module (`uv sync`)."""
 import json
 import sys
 from pathlib import Path
@@ -7,21 +7,20 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "world" / "smmr"))
+sys.path[:0] = [str(ROOT / "world" / "smmr"), str(ROOT / "tools")]
 
-from core.engine import SubprocessEngine  # noqa: E402
+from local_engine import local_engine  # noqa: E402
 from core.options import CATEGORIES, START_LOCATIONS, WALL_JUMP, OptionValues, build_settings  # noqa: E402
 
-BINARY = ROOT / "engine/target/dev-release/smmr-engine"
 PRESETS = json.loads((ROOT / "world/smmr/data/presets.json").read_text())
 INFO = json.loads((ROOT / "world/smmr/data/info.json").read_text())
 
-pytestmark = pytest.mark.skipif(not BINARY.exists(), reason="needs the engine build (make engine)")
+pytest.importorskip("smmr_engine", reason="needs the engine module (uv sync)")
 
 
 @pytest.fixture(scope="module")
 def engine():
-    return SubprocessEngine(BINARY, ROOT / "MapRandomizer")
+    return local_engine()
 
 
 @pytest.mark.parametrize("option, field", CATEGORIES.items())

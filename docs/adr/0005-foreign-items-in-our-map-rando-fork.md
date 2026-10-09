@@ -1,6 +1,6 @@
 # 0005: Off-world items are foreign items, in our fork of Map Rando
 
-Status: accepted (2026-10). Supersedes ADR 0003's send half (Nothing items), and ADR 0002's "unmodified".
+Status: accepted (2026-10). Supersedes ADR 0003's send half (Nothing items).
 
 ## Context
 
@@ -27,7 +27,7 @@ markers and its PLMs, which we can't do from outside the crate.
 ## Consequences
 
 - Off-world items can be seen and picked up; their graphics and map markers show their class.
-- A Map Rando update is a rebase of the fork branch onto the new upstream, then `make data fixtures`.
+- A Map Rando update is a rebase of the fork branch onto the new upstream, then `uv run tools/dev.py data` and `fixtures`.
 - `foreign_item.asm` takes the free bank $84 space; our patch runs PLM setups from bank $A2 instead, returning
   through the RTL that ends the PLM handler (ABI version 3).
 - Picking one up shows who gets what ("ALICE - HOOKSHOT") in a message box, after the item fanfare as Map Rando's

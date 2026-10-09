@@ -109,10 +109,10 @@ class SMMRWorld(World):
         try:
             self.rando_settings = engine.upgrade(settings_)
             self.world = engine.world(self.rando_settings, self.random.getrandbits(32))
-            session = engine.open(self.rando_settings, self.world.world)
+            logic = engine.open(self.rando_settings, self.world.world)
         except EngineError as e:
             raise OptionError(f"{GAME} ({self.player_name}, preset {option_values.preset}): {e}") from e
-        self.oracle = Oracle(lambda inventories: engine.reach(session, inventories))
+        self.oracle = Oracle(logic.reach)
 
     def _counts(self, state: CollectionState) -> dict[str, int]:
         """Our collected items, by Map Rando name, as the oracle takes them."""

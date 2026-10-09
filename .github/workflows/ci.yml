@@ -1,4 +1,5 @@
-# One job per layer, as the local loops (Makefile): core (seconds), engine + generated data, the World in Archipelago.
+# One job per layer, as the local loops (README): core (seconds), the engine module + generated data, the World in
+# Archipelago. uv provides Python 3.12 and the dev tools; `uv sync` builds the engine module (maturin).
 name: ci
 on: [push, pull_request]
 
@@ -7,10 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install pytest
-      - run: make test-core
+      - uses: astral-sh/setup-uv@v6
+      - run: uv run --no-project --python 3.12 --with pytest pytest -q tests/core   # no engine needed
 
   engine:
     runs-on: ubuntu-latest
@@ -20,36 +19,28 @@ jobs:
         run: |
           git submodule update --init MapRandomizer
           git -C MapRandomizer submodule update --init sm-json-data rust/lznint asar
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install pytest backports.zstd cmake
+      - uses: astral-sh/setup-uv@v6
       - uses: Swatinem/rust-cache@v2
         with: { workspaces: engine }
-      - run: make engine asar mw fetch
+      - run: uv sync
+      - run: uv run tools/fetch_data.py && uv run tools/dev.py asar && uv run tools/dev.py mw
       - name: Generated files are up to date
         run: |
-          make data
+          uv run tools/dev.py data
           git diff --exit-code world/smmr/data
-      - run: python -m pytest -q tests/engine
-      - uses: actions/upload-artifact@v4
-        with: { name: engine-linux, path: engine/target/dev-release/smmr-engine }
+      - run: uv run pytest -q tests/engine
 
   world:
-    needs: engine
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - run: |
           git submodule update --init MapRandomizer
           git -C MapRandomizer submodule update --init sm-json-data rust/lznint
-      - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - uses: actions/download-artifact@v4
-        with: { name: engine-linux, path: engine/target/dev-release }
-      - run: chmod +x engine/target/dev-release/smmr-engine && pip install backports.zstd && python tools/fetch_data.py
-      - name: Archipelago
-        run: |
-          git clone --depth 1 https://github.com/ArchipelagoMW/Archipelago.git ../Archipelago
-          pip install -r ../Archipelago/requirements.txt pytest pyright
-      - run: make typecheck AP=../Archipelago   # pyproject.toml: strict for the core, its tests and the tools
-      - run: make test-ap AP=../Archipelago PY=python
+      - uses: astral-sh/setup-uv@v6
+      - uses: Swatinem/rust-cache@v2
+        with: { workspaces: engine }
+      - run: uv sync && uv run tools/fetch_data.py
+      - run: git clone --depth 1 https://github.com/ArchipelagoMW/Archipelago.git ../Archipelago
+      - run: uv run tools/dev.py typecheck --ap ../Archipelago   # strict for the core, its tests and the tools
+      - run: uv run tools/dev.py test-ap --ap ../Archipelago

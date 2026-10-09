@@ -9,21 +9,18 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "world" / "smmr"))   # `core` alone: importing `smmr` needs Archipelago
 
-from core.engine import SubprocessEngine  # noqa: E402
+from core.engine import NativeEngine  # noqa: E402
+from local_engine import local_engine  # noqa: E402
 
 
-def default_engine() -> SubprocessEngine:
-    binary = Path(os.environ.get("SMMR_ENGINE", ROOT / "engine/target/dev-release/smmr-engine"))
-    data = Path(os.environ.get("SMMR_DATA", ROOT / "MapRandomizer"))
-    maps = os.environ.get("SMMR_MAPS")
-    return SubprocessEngine(binary, data, Path(maps) if maps else None)
+def default_engine() -> NativeEngine:
+    return local_engine()
 
 
 def load(path: str):

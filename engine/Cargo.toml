@@ -2,12 +2,12 @@
 name = "smmr-engine"
 version = "0.1.0"
 edition = "2024"
-description = "Runs Map Rando (our fork: upstream plus foreign items) behind a JSON stdin/stdout protocol"
+description = "Map Rando (our fork) as a Python module, for the Archipelago world"
 license = "MIT"
 
-[[bin]]
-name = "smmr-engine"
-path = "src/main.rs"
+[lib]
+name = "smmr_engine"
+crate-type = ["cdylib"]
 
 [dependencies]
 maprando = { path = "../MapRandomizer/rust/maprando" }
@@ -19,7 +19,7 @@ serde = "1.0.152"
 serde_derive = "1.0.152"
 serde_json = "1.0.91"
 log = "0.4.17"
-env_logger = "0.10.0"
+pyo3 = { version = "0.29", features = ["abi3-py312"] }
 
 [workspace]
 

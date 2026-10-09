@@ -8,7 +8,7 @@ import pytest
 from conftest import CORE, ROOT, VANILLA, boot_to_gameplay
 from core import mwpatch
 from core.catalog import LOCATION_ID_BASE
-from core.engine import SubprocessEngine
+from local_engine import local_engine
 from core.mwplan import message
 from core.sync import SendLocations, Snapshot, step
 
@@ -22,7 +22,7 @@ MESSAGE_BOX, FRAME_COUNTER = 0x1C1F, 0x05B6
 def foreign_rom(abi, catalog) -> bytes:
     if not VANILLA or not Path(CORE).exists():
         pytest.skip("needs SMMR_TEST_ROM and a libretro SNES core (SMMR_SNES_CORE)")
-    engine = SubprocessEngine(ROOT / "engine/target/dev-release/smmr-engine", ROOT / "MapRandomizer")
+    engine = local_engine()
     settings = json.loads((ROOT / "fixtures/settings/default-vanilla.upgraded.json").read_text())
     randomization = json.loads((ROOT / "fixtures/seeds/default-vanilla-1.json").read_text())["randomization"]
     foreign = {**OTHERS, MORPH_BALL_ROOM_ITEM: "Progression"}

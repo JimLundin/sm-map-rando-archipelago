@@ -12,10 +12,10 @@ You need your own Super Metroid (JU) ROM; none is included or distributed.
 
 See `docs/architecture.md` for the diagram. In short:
 
-- **Engine** (`engine/`): our Rust binary over the `MapRandomizer` submodule: our fork of Map Rando, upstream plus
-  foreign items (ADR 0005). It speaks JSON: `info`, `upgrade`, `world` (everything but the item placement), `open` and
-  `reach` (Map Rando's logic per inventory, ADR 0006), `rom`, `randomize` (Map Rando's own placement), and `serve` for
-  many requests from one process.
+- **Engine** (`engine/`): `smmr_engine`, our Python module in Rust (PyO3, built by maturin) over the `MapRandomizer`
+  submodule: our fork of Map Rando, upstream plus foreign items (ADR 0005). `Engine.world` (everything but the item
+  placement), `Engine.open` and `Session.reach` (Map Rando's logic per inventory, ADR 0006), `Engine.rom`,
+  `Engine.randomize` (Map Rando's own placement); its types are in `smmr_engine.pyi`.
 - **Core** (`world/smmr/core/`): the pipeline stages as pure functions with JSON artifacts between them (options →
   settings → Seed → logic → plan → ROM). Standard library only.
 - **World** (`world/smmr/`): thin Archipelago adapters. The World, the options (built from Map Rando's presets), the
@@ -25,35 +25,38 @@ See `docs/architecture.md` for the diagram. In short:
 
 ## Development
 
-Requirements: Rust, Python 3.12+ (what Archipelago's installer bundles), CMake and a C++ compiler (for asar), a libretro SNES core for the ROM tests (e.g.
-snes9x; `SMMR_SNES_CORE`), an Archipelago checkout for the World tests.
+Requirements: [uv](https://docs.astral.sh/uv/), Rust, CMake and a C++ compiler (for asar), a libretro SNES core for
+the ROM tests (e.g. snes9x; `SMMR_SNES_CORE`), an Archipelago checkout for the World tests. uv provides Python 3.12
+(what Archipelago's installer bundles) and the dev tools, and builds the engine module (maturin) into `.venv`.
 
 ```
 git clone --recursive … && cd …
-make fetch            # Mosaic tile patches (Map Rando data not in its repository)
-make engine asar mw   # engine (incremental, optimized), assembler, multiworld patch
-make data             # world/smmr/data from the engine (commit the result)
+uv sync                              # Python 3.12, dev tools, and the engine module
+uv run tools/fetch_data.py           # Mosaic tile patches (Map Rando data not in its repository)
+uv run tools/dev.py asar             # the assembler; then `uv run tools/dev.py mw` after asm changes
+uv run tools/dev.py data             # world/smmr/data from the engine (commit the result)
 ```
 
-The loops, fastest first:
+`uv run` rebuilds the engine module first whenever its Rust (or Map Rando's) changed. The loops, fastest first:
 
 | | |
 |---|---|
-| `make test-core` | core stages against recorded fixtures, ~0.1 s |
-| `make typecheck` | pyright (`pyproject.toml`): strict for the core, its tests and the tools |
-| `python tools/stage.py randomize settings.json --seed 1 -o seed.json` | run one stage from files |
-| `pytest tests/engine` | settings through the real engine, ~2 s |
-| `make test-rom ROM=vanilla.sfc` | our asm in a headless emulator, ~3 s |
-| `make test-ap AP=~/Archipelago` | generation, fill and multiworld in Archipelago (symlinks `worlds/smmr`) |
-| `make e2e AP_CLEAN=… ROM=…` | the packaged .apworld: generate, patch, boot to gameplay |
+| `uv run pytest tests/core` | core stages against recorded fixtures, ~0.1 s |
+| `uv run tools/dev.py typecheck --ap ~/Archipelago` | pyright (`pyproject.toml`): strict for the core, its tests and the tools |
+| `uv run tools/stage.py randomize settings.json --seed 1 -o seed.json` | run one stage from files |
+| `uv run pytest tests/engine` | settings and the logic through the real engine, ~5 s |
+| `SMMR_TEST_ROM=vanilla.sfc uv run pytest tests/rom` | our asm in a headless emulator, ~15 s |
+| `uv run tools/dev.py test-ap --ap ~/Archipelago` | generation, fill and multiworld in Archipelago (symlinks `worlds/smmr`) |
+| `uv run tools/dev.py e2e --ap … --rom …` | the packaged .apworld: generate, patch, boot (an Archipelago without `worlds/smmr`) |
 
-After a Map Rando update (submodule bump): `make data fixtures`, then the loops above.
+`--ap` and `--rom` default to `SMMR_AP` and `SMMR_TEST_ROM`. After a Map Rando update (submodule bump):
+`uv run tools/dev.py data` and `fixtures`, then the loops above.
 
 ## Release
 
-`make apworld` builds `dist/smmr.apworld` with this platform's engine. For other platforms, pass their builds:
-`python tools/build_apworld.py --engine linux-x86_64=… --engine win32-amd64=…`. The world version is in
-`world/smmr/archipelago.json`.
+`uv run tools/dev.py apworld` builds `dist/smmr.apworld` with this platform's engine module (`maturin build
+--release`). For other platforms, pass their wheels: `uv run tools/build_apworld.py --engine linux-x86_64=… --engine
+win32-amd64=…`. The world version is in `world/smmr/archipelago.json`.
 
 ## Status
 

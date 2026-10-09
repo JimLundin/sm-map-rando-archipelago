@@ -1,8 +1,25 @@
+[build-system]
+requires = ["maturin>=1.9,<2"]
+build-backend = "maturin"
+
 [project]
-name = "smmr"
-description = "Super Metroid Map Rando for Archipelago"
+name = "smmr-engine"
+description = "Map Rando (our fork) as a Python module, for the Super Metroid Map Rando Archipelago world"
 requires-python = ">=3.12"   # what Archipelago's installer bundles (3.12; it supports 3.11 to 3.13 from source)
-dynamic = ["version"]        # world/smmr/archipelago.json
+dynamic = ["version"]        # engine/Cargo.toml
+
+[dependency-groups]
+dev = ["pytest", "pyright", "backports.zstd", "maturin>=1.9,<2"]
+
+[tool.maturin]
+manifest-path = "engine/Cargo.toml"
+module-name = "smmr_engine"
+profile = "dev-release"      # optimized (randomization is slow otherwise) but incremental; releases build --release
+
+[tool.uv]
+# Rebuild the module when the Rust changes (ours or Map Rando's).
+cache-keys = [{ file = "pyproject.toml" }, { file = "engine/Cargo.toml" }, { file = "engine/**/*.rs" },
+              { file = "MapRandomizer/rust/maprando*/**/*.rs" }]
 
 [tool.pyright]
 pythonVersion = "3.12"

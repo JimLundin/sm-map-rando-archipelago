@@ -1,26 +1,13 @@
-//! `smmr-engine`: Map Rando (our fork, ADR 0005) behind a JSON protocol.
+//! Map Rando behind requests of JSON values: what the Python module (`lib.rs`) calls.
 //!
-//! Usage: `smmr-engine --data <MapRandomizer checkout or data copy> <command>`
-//! The request is a JSON object on stdin, the response a JSON object on a stdout line that starts with the byte 1E
-//! (Map Rando prints progress to stdout too): `{"ok": <result>}`, or `{"error": "<message>"}` with exit code 1.
-//! `serve` loads Map Rando's data once, then answers requests `{"command": ..., ...}`, one per line, until stdin ends.
-//!
-//! Commands:
 //! - `info`: the item locations, items and version (stable facts the world is built from)
 //! - `upgrade`: `{settings}` → `{settings}`, with presets applied and older formats upgraded
 //! - `randomize`: `{settings, seed, maps_dir?}` → `{randomization, spoiler, seed_hash}`: Map Rando's own placement
-//! - `world`: `{settings, seed, maps_dir?}` → `{world, seed_hash}`: everything but the item placement (`world.rs`)
-//! - `reach`: `{settings, world, inventories: [{item: count}]}` → `[{locations, one_way, flags, beatable}]`: what each
-//!   set of collected items (on top of the starting items) makes reachable
-//! - `open`: `{settings, world}` → `{session}`, then `reach` with `{session, inventories}`: the world's logic set up
-//!   once (in `serve`), for many queries
-//! - `rom`: `{settings, randomization, rom, out}` or `{settings, world, item_placement, foreign_items, rom, out}` → `{}`;
+//! - `world`: `{settings, seed, maps_dir?}` → `{world, seed_hash, pool, locations, starting_items, escape}`: everything
+//!   but the item placement (`world.rs`)
+//! - `open`: settings and a world → a `Session`, whose `reach` answers what sets of collected items make reachable
+//! - `rom`: `{settings, randomization, rom, out}` or `{settings, world, item_placement, foreign_items, rom, out}`:
 //!   writes Map Rando's ROM to `out`
-//!
-//! Map Rando reads its data from paths relative to `<data>/rust`, so the engine changes directory there first. It is
-//! its own process, so this doesn't affect the caller.
-
-mod world;
 
 use anyhow::{Context, Result, bail};
 use maprando::customize::CustomizeSettings;
@@ -39,9 +26,8 @@ use maprando::traverse::Traverser;
 use maprando_game::{GameData, Item, LinksDataGroup, Map};
 use maprando_logic::LocalState;
 use rand::{Rng, RngCore, SeedableRng};
-use world::World;
+use crate::world::{self, World};
 use serde_json::{Value, json};
-use std::io::{BufRead, Read, Write};
 use std::path::{Path, PathBuf};
 
 const VERSION: usize = include!("../../MapRandomizer/rust/VERSION");
@@ -53,26 +39,41 @@ const MAP_POOLS: [(&str, &str); 3] = [
     ("Wild", "v119-wild-avro"),
 ];
 
-struct Engine {
+pub struct Engine {
     game_data: GameData,
     preset_data: PresetData,
-    sessions: std::cell::RefCell<Vec<Session>>,
+    rust_dir: PathBuf,   // the data directory's `rust`: Map Rando's paths are relative to it
 }
 
-/// A world's logic, set up once for many `reach` queries. Its data lives as long as the process (`serve` serves one
-/// generation).
-struct Session {
+/// A world's logic, set up once for many `reach` queries. Its data lives as long as the process (one generation).
+pub struct Session {
     world: &'static World,
     randomizer: Randomizer<'static>,
 }
 
+impl Session {
+    /// What each set of collected items (on top of the starting items) makes reachable.
+    pub fn reach(&self, inventories: &[Vec<(Item, usize)>]) -> Vec<world::Reach> {
+        inventories.iter().map(|x| world::reach(&self.randomizer, self.world, x)).collect()
+    }
+}
+
 impl Engine {
-    fn load() -> Result<Self> {
-        let mut game_data = GameData::load(Path::new(".")).context("loading Map Rando game data")?;
+    pub fn rust_dir(&self) -> &Path {
+        &self.rust_dir
+    }
+
+    /// Loads Map Rando's data from `data_dir` (a MapRandomizer checkout, or the data the .apworld bundles).
+    pub fn load(data_dir: &Path) -> Result<Self> {
+        let rust_dir = std::path::absolute(data_dir)?.join("rust");
+        if !maprando::paths::set_rust_dir(&rust_dir) && maprando::paths::data_path("") != rust_dir {
+            bail!("Map Rando's data is already loaded from {} in this process", maprando::paths::data_path("").display());
+        }
+        let mut game_data = GameData::load(&rust_dir).context("loading Map Rando game data")?;
         let preset_data = PresetData::load(
-            Path::new("data/tech_data.json"),
-            Path::new("data/notable_data.json"),
-            Path::new("data/presets"),
+            &rust_dir.join("data/tech_data.json"),
+            &rust_dir.join("data/notable_data.json"),
+            &rust_dir.join("data/presets"),
             &game_data,
         )
         .context("loading Map Rando presets")?;
@@ -80,10 +81,10 @@ impl Engine {
         game_data.make_links_data(&|link, game_data| {
             get_link_difficulty_length(link, game_data, &preset_data, &global)
         });
-        Ok(Engine { game_data, preset_data, sessions: Default::default() })
+        Ok(Engine { game_data, preset_data, rust_dir })
     }
 
-    fn info(&self) -> Result<Value> {
+    pub fn info(&self) -> Result<Value> {
         let locations: Vec<Value> = self
             .game_data
             .item_locations
@@ -124,15 +125,16 @@ impl Engine {
         }))
     }
 
-    fn upgrade(&self, req: &Value) -> Result<Value> {
+    pub fn upgrade(&self, req: &Value) -> Result<Value> {
         let (settings, _) = try_upgrade_settings(req["settings"].to_string(), &self.preset_data, true)?;
         Ok(json!({ "settings": serde_json::from_str::<Value>(&settings)? }))
     }
 
     /// The vanilla map, and the map pools found in `maps_dir` or `<data>/maps` (`tools/fetch_data.py --maps`).
     fn map_repository(&self, maps_dir: Option<&Path>) -> Result<OfflineMapRepository> {
-        let mut pools: Vec<(&str, PathBuf)> = vec![("Vanilla", PathBuf::from("../maps/vanilla"))];
-        let dirs = maps_dir.into_iter().chain([Path::new("../maps")]);
+        let mut pools: Vec<(&str, PathBuf)> = vec![("Vanilla", self.rust_dir.join("../maps/vanilla"))];
+        let default_maps = self.rust_dir.join("../maps");
+        let dirs = maps_dir.into_iter().chain([default_maps.as_path()]);
         for dir in dirs {
             for (layout, pool) in MAP_POOLS {
                 if dir.join(pool).is_dir() && !pools.iter().any(|(l, _)| *l == layout) {
@@ -159,7 +161,7 @@ impl Engine {
     }
 
     /// The website's randomization loop (maprando-web `handle_randomize_request`), with our seed and no timeout.
-    fn randomize(&self, req: &Value) -> Result<Value> {
+    pub fn randomize(&self, req: &Value) -> Result<Value> {
         let settings = parse_settings(req)?;
         let random_seed = req["seed"].as_u64().context("seed must be an unsigned integer")? as usize;
         let maps_dir = req["maps_dir"].as_str().map(PathBuf::from);
@@ -230,7 +232,7 @@ impl Engine {
 
     /// The randomization loop up to the item placement: the map, the doors, the objectives and the start location,
     /// checked to be a world items can be placed in (`world::check`).
-    fn world(&self, req: &Value) -> Result<Value> {
+    pub fn world(&self, req: &Value) -> Result<Value> {
         let settings = parse_settings(req)?;
         let random_seed = req["seed"].as_u64().context("seed must be an unsigned integer")? as usize;
         let maps_dir = req["maps_dir"].as_str().map(PathBuf::from);
@@ -400,11 +402,11 @@ impl Engine {
         f(&randomizer)
     }
 
-    /// Sets up a world's logic for `reach {session, inventories}`.
-    fn open(&'static self, req: &Value) -> Result<Value> {
-        let settings: &'static RandomizerSettings = Box::leak(Box::new(parse_settings(req)?));
-        let world: &'static World =
-            Box::leak(Box::new(serde_json::from_value(req["world"].clone()).context("world")?));
+    /// Sets up a world's logic for `Session::reach`.
+    pub fn open(&'static self, settings: &Value, world: &Value) -> Result<Session> {
+        let settings: &'static RandomizerSettings =
+            Box::leak(Box::new(serde_json::from_value(settings.clone()).context("settings")?));
+        let world: &'static World = Box::leak(Box::new(serde_json::from_value(world.clone()).context("world")?));
         let (difficulty_tiers, base_links_data) = self.rules(settings);
         let difficulty_tiers: &'static [DifficultyConfig] = Box::leak(difficulty_tiers.into_boxed_slice());
         let base_links_data: &'static LinksDataGroup = Box::leak(Box::new(base_links_data));
@@ -419,20 +421,12 @@ impl Engine {
             base_links_data,
             &mut seeded_rng(0),
         );
-        let mut sessions = self.sessions.borrow_mut();
-        sessions.push(Session { world, randomizer });
-        Ok(json!({ "session": sessions.len() - 1 }))
+        Ok(Session { world, randomizer })
     }
 
-    fn reach(&self, req: &Value) -> Result<Value> {
+    /// `reach` without a session (tools/check_reach.py): `{settings, world, inventories, chain?}`.
+    pub fn reach(&self, req: &Value) -> Result<Value> {
         let inventories = parse_inventories(req)?;
-        if let Some(session) = req["session"].as_u64() {
-            let sessions = self.sessions.borrow();
-            let session = sessions.get(session as usize).context("no such session")?;
-            return Ok(json!(
-                inventories.iter().map(|x| world::reach(&session.randomizer, session.world, x)).collect::<Vec<_>>()
-            ));
-        }
         let settings = parse_settings(req)?;
         let world: World = serde_json::from_value(req["world"].clone()).context("world")?;
         let chain = req["chain"].as_bool().unwrap_or(false);
@@ -444,7 +438,7 @@ impl Engine {
         })
     }
 
-    fn rom(&self, req: &Value) -> Result<Value> {
+    pub fn rom(&self, req: &Value) -> Result<Value> {
         let settings = parse_settings(req)?;
         let randomization: Randomization = if req.get("world").is_some() {
             let world: World = serde_json::from_value(req["world"].clone()).context("world")?;
@@ -483,7 +477,7 @@ impl Engine {
 }
 
 /// `inventories`: a list of `{item: count}`.
-fn parse_inventories(req: &Value) -> Result<Vec<Vec<(Item, usize)>>> {
+pub fn parse_inventories(req: &Value) -> Result<Vec<Vec<(Item, usize)>>> {
     let inventories = req["inventories"].as_array().context("inventories must be a list")?;
     inventories
         .iter()
@@ -525,76 +519,4 @@ fn seed_hash(display_seed: usize) -> String {
         .map(|&i| ENEMIES[i as usize % 32])
         .collect::<Vec<_>>()
         .join(" ")
-}
-
-/// Responses are lines starting with this byte (ASCII record separator): Map Rando prints progress to stdout too.
-const RESPONSE: char = '\u{1e}';
-
-fn respond(result: Result<Value>) -> bool {
-    let ok = result.is_ok();
-    let response = match result {
-        Ok(value) => json!({ "ok": value }),
-        Err(e) => json!({ "error": format!("{e:#}") }),
-    };
-    let mut out = std::io::stdout().lock();
-    let _ = writeln!(out, "{RESPONSE}{response}");
-    let _ = out.flush();
-    ok
-}
-
-fn dispatch(engine: &'static Engine, command: &str, req: &Value) -> Result<Value> {
-    match command {
-        "info" => engine.info(),
-        "upgrade" => engine.upgrade(req),
-        "randomize" => engine.randomize(req),
-        "world" => engine.world(req),
-        "reach" => engine.reach(req),
-        "open" => engine.open(req),
-        "rom" => engine.rom(req),
-        _ => bail!("unknown command {command}"),
-    }
-}
-
-fn main() {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let (data, command) = match args.as_slice() {
-        [flag, data, command] if flag == "--data" => (PathBuf::from(data), command.clone()),
-        _ => {
-            respond(Err(anyhow::anyhow!("usage: smmr-engine --data <dir> <info|upgrade|randomize|world|reach|rom|serve>")));
-            std::process::exit(2);
-        }
-    };
-    // Paths in requests are absolute (the caller resolves them), so changing directory doesn't affect them.
-    let engine = std::env::set_current_dir(data.join("rust"))
-        .with_context(|| format!("{} is not a Map Rando data directory", data.display()))
-        .and_then(|_| Engine::load());
-    let engine: &'static Engine = match engine {
-        Ok(engine) => Box::leak(Box::new(engine)),
-        Err(e) => {
-            respond(Err(e));
-            std::process::exit(1);
-        }
-    };
-    if command == "serve" {
-        // One request per line, `{"command": ..., ...}`; one response line each. Ends at the end of stdin.
-        for line in std::io::stdin().lock().lines() {
-            let Ok(line) = line else { break };
-            let result = serde_json::from_str::<Value>(&line).map_err(anyhow::Error::from).and_then(|req| {
-                let command = req["command"].as_str().unwrap_or_default().to_string();
-                dispatch(engine, &command, &req)
-            });
-            respond(result);
-        }
-        return;
-    }
-    let mut input = String::new();
-    let result = std::io::stdin()
-        .read_to_string(&mut input)
-        .map_err(anyhow::Error::from)
-        .and_then(|_| Ok(if input.trim().is_empty() { json!({}) } else { serde_json::from_str(&input)? }))
-        .and_then(|req| dispatch(engine, &command, &req));
-    if !respond(result) {
-        std::process::exit(1);
-    }
 }

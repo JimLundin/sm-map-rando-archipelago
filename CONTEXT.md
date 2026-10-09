@@ -8,8 +8,8 @@ S6 sync (the client's decisions).
 
 **Artifact** — what passes between stages, serializable as JSON: settings, Seed, LogicModel, MwPlan, the ROM.
 
-**Engine** — `smmr-engine`, our Rust binary over Map Rando (our fork: upstream plus foreign items, ADR 0005). The world
-reaches it only through the engine port (`core.engine.Engine`).
+**Engine** — `smmr_engine`, our Python module in Rust (PyO3) over Map Rando (our fork: upstream plus foreign items,
+ADR 0005). The world reaches it only through the engine port (`core.engine.NativeEngine`).
 
 **World** — the engine's `world` output: everything Map Rando decides before placing items (map, locked doors,
 objectives, start location and hub, escape time), with the item pool and the item locations in the map's rooms.

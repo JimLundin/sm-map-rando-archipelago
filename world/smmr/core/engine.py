@@ -1,25 +1,24 @@
 """The engine port: the only way the world calls Map Rando.
 
-`SubprocessEngine` runs the `smmr-engine` binary (see `engine/src/main.rs`) as one long-lived `serve` process, so
-Map Rando's data is loaded once per generation rather than per call. Requests and responses are JSON lines;
-responses start with the byte 1E, since Map Rando prints progress to stdout too.
+`NativeEngine` calls `smmr_engine`, our PyO3 module over Map Rando (engine/src/lib.rs, its types in
+smmr_engine.pyi). `runtime` imports the module (from the development install, or extracted from the .apworld) and
+passes it in, so the core doesn't import it. Map Rando's own data crosses as JSON; the logic's queries don't.
 """
 from __future__ import annotations
 
 import json
 import platform
-import subprocess
 import sys
-import tempfile
-import threading
-from pathlib import Path
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import IO, Any, Protocol, Self
+from pathlib import Path
+from types import ModuleType
+from typing import TYPE_CHECKING, Any, Protocol, Self
 
 from .logic import Inventory, Reach
 
-RESPONSE = b"\x1e"
+if TYPE_CHECKING:
+    import smmr_engine
 
 type JsonObject = dict[str, Any]      # Map Rando's own data (settings, a world): only the engine reads it
 
@@ -49,105 +48,83 @@ class EngineError(Exception):
     """Map Rando rejected the request (invalid settings, randomization failed, ...)."""
 
 
+class WorldLogic(Protocol):
+    def reach(self, inventories: Sequence[Inventory]) -> list[Reach]:
+        """For each inventory (on top of the starting items), what it makes reachable."""
+        ...
+
+
 class Engine(Protocol):
-    def info(self) -> dict[str, Any]: ...
+    def info(self) -> JsonObject: ...
 
-    def upgrade(self, settings: Mapping[str, Any]) -> dict[str, Any]: ...
+    def upgrade(self, settings: Mapping[str, Any]) -> JsonObject: ...
 
-    def randomize(self, settings: Mapping[str, Any], seed: int) -> dict[str, Any]: ...
+    def randomize(self, settings: Mapping[str, Any], seed: int) -> JsonObject: ...
 
     def world(self, settings: Mapping[str, Any], seed: int) -> GeneratedWorld: ...
 
-    def open(self, settings: Mapping[str, Any], world: JsonObject) -> int: ...
+    def open(self, settings: Mapping[str, Any], world: JsonObject) -> WorldLogic: ...
 
-    def reach(self, session: int, inventories: Sequence[Inventory]) -> list[Reach]: ...
-
-    def rom(self, settings: Mapping[str, Any], randomization: Mapping[str, Any], rom: Path, out: Path) -> None: ...
+    def rom(self, settings: Mapping[str, Any], randomization: JsonObject, rom: Path, out: Path) -> None: ...
 
     def rom_from_world(self, settings: Mapping[str, Any], world: JsonObject, item_placement: Sequence[str],
                        foreign_items: Sequence[Mapping[str, Any]], rom: Path, out: Path) -> None: ...
 
 
-class SubprocessEngine:
-    def __init__(self, binary: Path, data_dir: Path, maps_dir: Path | None = None):
-        self.binary = Path(binary)
+@dataclass(frozen=True, slots=True)
+class NativeWorldLogic:
+    session: smmr_engine.Session
+
+    def reach(self, inventories: Sequence[Inventory]) -> list[Reach]:
+        answers = self.session.reach([dict(inventory) for inventory in inventories])
+        return [Reach(frozenset(locations), beatable) for locations, beatable in answers]
+
+
+class NativeEngine:
+    """The port over `smmr_engine` (passed in by `runtime`): Map Rando's data from `data_dir`, map pools from
+    `maps_dir` (default `data_dir/maps`)."""
+
+    def __init__(self, module: ModuleType, data_dir: Path, maps_dir: Path | None = None) -> None:
         self.data_dir = Path(data_dir)
-        self.maps_dir = maps_dir
-        self._process: subprocess.Popen[bytes] | None = None
-        self._stderr: IO[bytes] | None = None
-        self._lock = threading.Lock()
+        self.maps_dir = Path(maps_dir) if maps_dir is not None else None
+        self._error: type[Exception] = module.EngineError
+        self._engine: smmr_engine.Engine = self._call(lambda: module.Engine.load(self.data_dir))
 
-    def _start(self) -> subprocess.Popen[bytes]:
-        if self._process is None or self._process.poll() is not None:
-            self._stderr = tempfile.TemporaryFile()
-            self._process = subprocess.Popen([str(self.binary), "--data", str(self.data_dir.resolve()), "serve"],
-                                             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self._stderr)
-        return self._process
+    def _call[T](self, f: Callable[[], T]) -> T:
+        try:
+            return f()
+        except self._error as e:
+            raise EngineError(str(e)) from e
 
-    def call(self, command: str, request: Mapping[str, Any]) -> Any:
-        with self._lock:
-            process = self._start()
-            assert process.stdin is not None and process.stdout is not None
-            try:
-                process.stdin.write(json.dumps({**request, "command": command}).encode() + b"\n")
-                process.stdin.flush()
-                while not (line := process.stdout.readline()).startswith(RESPONSE):
-                    if not line:   # the engine exited
-                        raise BrokenPipeError
-            except OSError:
-                raise RuntimeError(f"smmr-engine crashed during {command}: {self._error_output()}") from None
-        response = json.loads(line[1:])
-        if "error" in response:
-            raise EngineError(response["error"])
-        return response["ok"]
+    def info(self) -> JsonObject:
+        return json.loads(self._call(self._engine.info))
 
-    def _error_output(self) -> str:
-        if self._process is not None:
-            self._process.wait(timeout=10)
-        assert self._stderr is not None
-        self._stderr.seek(0)
-        return self._stderr.read().decode(errors="replace")[-2000:]
+    def upgrade(self, settings: Mapping[str, Any]) -> JsonObject:
+        return json.loads(self._call(lambda: self._engine.upgrade(json.dumps(settings))))
 
-    def close(self) -> None:
-        if self._process is not None and self._process.poll() is None:
-            assert self._process.stdin is not None
-            self._process.stdin.close()
-            self._process.wait(timeout=10)
-        if self._stderr is not None:
-            self._stderr.close()
-
-    def info(self) -> dict[str, Any]:
-        return self.call("info", {})
-
-    def upgrade(self, settings: Mapping[str, Any]) -> dict[str, Any]:
-        return self.call("upgrade", {"settings": settings})["settings"]
-
-    def randomize(self, settings: Mapping[str, Any], seed: int) -> dict[str, Any]:
-        return self.call("randomize", self._with_maps({"settings": settings, "seed": seed}))
+    def randomize(self, settings: Mapping[str, Any], seed: int) -> JsonObject:
+        return json.loads(self._call(lambda: self._engine.randomize(json.dumps(settings), seed, self.maps_dir)))
 
     def world(self, settings: Mapping[str, Any], seed: int) -> GeneratedWorld:
-        return GeneratedWorld.from_json(self.call("world", self._with_maps({"settings": settings, "seed": seed})))
+        answer = self._call(lambda: self._engine.world(json.dumps(settings), seed, self.maps_dir))
+        return GeneratedWorld.from_json(json.loads(answer))
 
-    def open(self, settings: Mapping[str, Any], world: JsonObject) -> int:
-        """Sets up the world's logic in the engine process, for `reach`."""
-        return self.call("open", {"settings": settings, "world": world})["session"]
+    def open(self, settings: Mapping[str, Any], world: JsonObject) -> WorldLogic:
+        """The world's logic, set up once for many `reach` queries."""
+        return NativeWorldLogic(self._call(lambda: self._engine.open(json.dumps(settings), json.dumps(world))))
 
-    def reach(self, session: int, inventories: Sequence[Inventory]) -> list[Reach]:
-        """For each inventory (on top of the starting items), what it makes reachable."""
-        answers = self.call("reach", {"session": session, "inventories": [dict(x) for x in inventories]})
-        return [Reach(frozenset(answer["locations"]), answer["beatable"]) for answer in answers]
+    def reach_unsessioned(self, request: JsonObject) -> list[JsonObject]:
+        """`reach` with the settings and the world in the request (`{settings, world, inventories, chain?}`)."""
+        return json.loads(self._call(lambda: self._engine.reach(json.dumps(request))))
 
-    def _with_maps(self, request: dict[str, Any]) -> dict[str, Any]:
-        if self.maps_dir is not None:
-            request["maps_dir"] = str(Path(self.maps_dir).resolve())
-        return request
-
-    def rom(self, settings: Mapping[str, Any], randomization: Mapping[str, Any], rom: Path, out: Path) -> None:
-        self.call("rom", {"settings": settings, "randomization": randomization,
-                          "rom": str(Path(rom).resolve()), "out": str(Path(out).resolve())})
+    def rom(self, settings: Mapping[str, Any], randomization: JsonObject, rom: Path, out: Path) -> None:
+        self._rom({"settings": settings, "randomization": randomization, "rom": rom, "out": out})
 
     def rom_from_world(self, settings: Mapping[str, Any], world: JsonObject, item_placement: Sequence[str],
                        foreign_items: Sequence[Mapping[str, Any]], rom: Path, out: Path) -> None:
-        self.call("rom", {"settings": settings, "world": world, "item_placement": list(item_placement),
-                          "foreign_items": list(foreign_items),
-                          "rom": str(Path(rom).resolve()), "out": str(Path(out).resolve())})
+        self._rom({"settings": settings, "world": world, "item_placement": list(item_placement),
+                   "foreign_items": list(foreign_items), "rom": rom, "out": out})
+
+    def _rom(self, request: dict[str, Any]) -> None:
+        request = {**request, "rom": str(Path(request["rom"]).resolve()), "out": str(Path(request["out"]).resolve())}
+        self._call(lambda: self._engine.rom(json.dumps(request)))
