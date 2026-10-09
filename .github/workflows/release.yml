@@ -32,5 +32,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           version="$(python3 -c 'import json; print(json.load(open("worlds/sm_map_rando_upstream/archipelago.json"))["world_version"])')"
+          # Release notes written for the tag (docs/releases/<tag>.md) come first, then GitHub's changelog
+          notes=()
+          if [ -f "docs/releases/$GITHUB_REF_NAME.md" ]; then notes=(--notes-file "docs/releases/$GITHUB_REF_NAME.md"); fi
           gh release create "$GITHUB_REF_NAME" dist/sm_map_rando_upstream.apworld "dist/Super Metroid Map Rando Upstream.yaml" \
-            --title "Super Metroid Map Rando Upstream $version for Archipelago" --generate-notes
+            --title "Super Metroid Map Rando Upstream $version for Archipelago" "${notes[@]}" --generate-notes
