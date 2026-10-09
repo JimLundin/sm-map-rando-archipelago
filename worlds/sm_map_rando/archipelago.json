@@ -1,9 +1,0 @@
-{
-    "game": "Super Metroid Map Rando",
-    "world_version": "0.123.2",
-    "minimum_ap_version": "0.6.6",
-    "authors": [
-        "Map Rando by blkerby and contributors",
-        "Archipelago integration based on work by lordlou"
-    ]
-}
