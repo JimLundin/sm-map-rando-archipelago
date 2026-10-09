@@ -1,13 +1,13 @@
 """IPS patches: encode the bytes a patch writes, and apply them."""
 from __future__ import annotations
 
-from typing import Dict, Iterator, Tuple
+from collections.abc import Iterator
 
 HEADER, FOOTER = b"PATCH", b"EOF"
 EOF_OFFSET = 0x454F46   # an offset spelling "EOF" can't start a record
 
 
-def _runs(writes: Dict[int, int]) -> Iterator[Tuple[int, bytes]]:
+def _runs(writes: dict[int, int]) -> Iterator[tuple[int, bytes]]:
     run_start, run = None, bytearray()
     for offset in sorted(writes):
         if run_start is not None and offset == run_start + len(run) and len(run) < 0xFFFF:
@@ -20,7 +20,7 @@ def _runs(writes: Dict[int, int]) -> Iterator[Tuple[int, bytes]]:
         yield run_start, bytes(run)
 
 
-def encode(writes: Dict[int, int]) -> bytes:
+def encode(writes: dict[int, int]) -> bytes:
     out = bytearray(HEADER)
     for offset, data in _runs(writes):
         if offset == EOF_OFFSET:

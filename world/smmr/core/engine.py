@@ -15,7 +15,7 @@ import threading
 from pathlib import Path
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import IO, Any, Dict, Optional, Protocol, Self, TypeAlias
+from typing import IO, Any, Protocol, Self, TypeAlias
 
 from .logic import Inventory, Reach
 
@@ -50,11 +50,11 @@ class EngineError(Exception):
 
 
 class Engine(Protocol):
-    def info(self) -> Dict[str, Any]: ...
+    def info(self) -> dict[str, Any]: ...
 
-    def upgrade(self, settings: Mapping[str, Any]) -> Dict[str, Any]: ...
+    def upgrade(self, settings: Mapping[str, Any]) -> dict[str, Any]: ...
 
-    def randomize(self, settings: Mapping[str, Any], seed: int) -> Dict[str, Any]: ...
+    def randomize(self, settings: Mapping[str, Any], seed: int) -> dict[str, Any]: ...
 
     def world(self, settings: Mapping[str, Any], seed: int) -> GeneratedWorld: ...
 
@@ -69,12 +69,12 @@ class Engine(Protocol):
 
 
 class SubprocessEngine:
-    def __init__(self, binary: Path, data_dir: Path, maps_dir: Optional[Path] = None):
+    def __init__(self, binary: Path, data_dir: Path, maps_dir: Path | None = None):
         self.binary = Path(binary)
         self.data_dir = Path(data_dir)
         self.maps_dir = maps_dir
-        self._process: Optional[subprocess.Popen[bytes]] = None
-        self._stderr: Optional[IO[bytes]] = None
+        self._process: subprocess.Popen[bytes] | None = None
+        self._stderr: IO[bytes] | None = None
         self._lock = threading.Lock()
 
     def _start(self) -> subprocess.Popen[bytes]:
@@ -116,13 +116,13 @@ class SubprocessEngine:
         if self._stderr is not None:
             self._stderr.close()
 
-    def info(self) -> Dict[str, Any]:
+    def info(self) -> dict[str, Any]:
         return self.call("info", {})
 
-    def upgrade(self, settings: Mapping[str, Any]) -> Dict[str, Any]:
+    def upgrade(self, settings: Mapping[str, Any]) -> dict[str, Any]:
         return self.call("upgrade", {"settings": settings})["settings"]
 
-    def randomize(self, settings: Mapping[str, Any], seed: int) -> Dict[str, Any]:
+    def randomize(self, settings: Mapping[str, Any], seed: int) -> dict[str, Any]:
         return self.call("randomize", self._with_maps({"settings": settings, "seed": seed}))
 
     def world(self, settings: Mapping[str, Any], seed: int) -> GeneratedWorld:
@@ -137,7 +137,7 @@ class SubprocessEngine:
         answers = self.call("reach", {"session": session, "inventories": [dict(x) for x in inventories]})
         return [Reach(frozenset(answer["locations"]), answer["beatable"]) for answer in answers]
 
-    def _with_maps(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def _with_maps(self, request: dict[str, Any]) -> dict[str, Any]:
         if self.maps_dir is not None:
             request["maps_dir"] = str(Path(self.maps_dir).resolve())
         return request

@@ -6,10 +6,13 @@ ROM     ?=
 CARGO   ?= cargo
 ENGINE  := engine/target/dev-release/smmr-engine
 
-.PHONY: test-core engine data test-ap test-rom fixtures fetch mw asar apworld e2e
+.PHONY: test-core typecheck engine data test-ap test-rom fixtures fetch mw asar apworld e2e
 
 test-core:              ## core stages, no Archipelago, no Rust (< 1 s)
 	$(PY) -m pytest -q tests/core
+
+typecheck:              ## pyright (pyproject.toml): strict for the core, its tests and the tools
+	pyright
 
 engine:                 ## incremental, optimized engine build
 	cd engine && $(CARGO) build --profile dev-release

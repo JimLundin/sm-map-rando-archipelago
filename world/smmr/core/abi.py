@@ -3,7 +3,8 @@ from __future__ import annotations
 
 import tomllib
 from dataclasses import dataclass
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 
 def snes_to_pc(address: int) -> int:
@@ -11,7 +12,7 @@ def snes_to_pc(address: int) -> int:
     return ((address >> 16) & 0x7F) * 0x8000 + (address & 0x7FFF)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Abi:
     version: int
     wram: Mapping[str, int]
@@ -20,7 +21,7 @@ class Abi:
 
     @staticmethod
     def parse(text: str) -> "Abi":
-        data: Dict[str, Any] = tomllib.loads(text)
+        data: dict[str, Any] = tomllib.loads(text)
         return Abi(data["version"], data["wram"], data["rom"], data["items"])
 
     # Patcher ---------------------------------------------------------------------------------------------------
@@ -44,15 +45,15 @@ class Abi:
 
     # Client ----------------------------------------------------------------------------------------------------
 
-    def collected_locations(self, collected_bits: bytes, location_table: bytes) -> List[int]:
+    def collected_locations(self, collected_bits: bytes, location_table: bytes) -> list[int]:
         """Location indexes whose collected-item bit is set."""
-        found = []
+        found: list[int] = []
         for bit, index in enumerate(location_table):
             if index != 0xFF and collected_bits[bit >> 3] >> (bit & 7) & 1:
                 found.append(index)
         return sorted(found)
 
-    def mailbox(self, item: int, sender: int) -> Optional[bytes]:
+    def mailbox(self, item: int, sender: int) -> bytes | None:
         """The mailbox's item and sender words, or None if the ROM can't receive that item. The client writes them
         before the seq word, so the ROM never sees a half-written item."""
         if not 0 <= item < self.items["count"] or item == self.items["nothing"]:

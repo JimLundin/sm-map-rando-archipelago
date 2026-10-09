@@ -290,13 +290,41 @@ pub fn locations(randomizer: &Randomizer) -> Vec<usize> {
         .collect()
 }
 
-/// A world that Archipelago can place items in: something is reachable at the start, and with the whole pool the
-/// game is beatable (and Phantoon defeated, unless the map is Small: Map Rando's own checks after placing items).
+/// How many locations must be open at the start: while fewer are, an item that opens more must exist (the World's
+/// `pre_fill` places it, `EARLY_LOCATIONS` there).
+pub const EARLY_LOCATIONS: usize = 4;
+
+/// A world that Archipelago can place items in: from the start, items one at a time open at least `EARLY_LOCATIONS`
+/// locations (with fewer, the fill can't place what it needs: Map Rando's own placement would retry too), and with
+/// the whole pool the game is beatable (and Phantoon defeated, unless the map is Small: Map Rando's own checks after
+/// placing items).
 pub fn check(randomizer: &Randomizer, world: &World) -> Result<(), String> {
-    if reach(randomizer, world, &[]).locations.is_empty() {
-        return Err("no item location is reachable at the start".into());
+    let pool = pool(randomizer);
+    let mut collected: Vec<(Item, usize)> = vec![];
+    let mut placed = 0;
+    loop {
+        let reached = reach(randomizer, world, &collected).locations.len();
+        if reached - placed >= EARLY_LOCATIONS {
+            break;
+        }
+        if reached == placed {
+            return Err(format!("the start closes after {placed} items"));
+        }
+        // The item that opens the most locations, as `pre_fill` chooses it.
+        let best = pool
+            .iter()
+            .filter(|&&(item, count)| item != Item::Nothing && count > count_of(&collected, item))
+            .map(|&(item, _)| (reach(randomizer, world, &with(&collected, item)).locations.len(), item))
+            .max_by_key(|&(opened, _)| opened);
+        match best {
+            Some((opened, item)) if opened > reached => {
+                collected = with(&collected, item);
+                placed += 1;
+            }
+            _ => return Err(format!("no single item opens more than the {reached} locations at the start")),
+        }
     }
-    let full = reach(randomizer, world, &pool(randomizer));
+    let full = reach(randomizer, world, &pool);
     if !full.beatable {
         return Err("not beatable with every item".into());
     }
@@ -304,6 +332,16 @@ pub fn check(randomizer: &Randomizer, world: &World) -> Result<(), String> {
         return Err("Phantoon can't be defeated with every item".into());
     }
     Ok(())
+}
+
+fn count_of(collected: &[(Item, usize)], item: Item) -> usize {
+    collected.iter().filter(|(x, _)| *x == item).map(|(_, count)| count).sum()
+}
+
+fn with(collected: &[(Item, usize)], item: Item) -> Vec<(Item, usize)> {
+    let mut out = collected.to_vec();
+    out.push((item, 1));
+    out
 }
 
 /// A deterministic seed name (Map Rando's `get_seed_name` mixes in the time): 9 characters without vowels.

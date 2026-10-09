@@ -40,6 +40,7 @@ The loops, fastest first:
 | | |
 |---|---|
 | `make test-core` | core stages against recorded fixtures, ~0.1 s |
+| `make typecheck` | pyright (`pyproject.toml`): strict for the core, its tests and the tools |
 | `python tools/stage.py randomize settings.json --seed 1 -o seed.json` | run one stage from files |
 | `pytest tests/engine` | settings through the real engine, ~2 s |
 | `make test-rom ROM=vanilla.sfc` | our asm in a headless emulator, ~3 s |

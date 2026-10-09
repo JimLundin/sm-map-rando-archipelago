@@ -9,7 +9,8 @@ from __future__ import annotations
 import copy
 import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, Mapping, Optional
+from collections.abc import Mapping
+from typing import Any
 
 MAP_LAYOUTS = ("Vanilla", "Standard", "Small", "Wild")
 START_LOCATIONS = ("Ship", "Random", "Escape")
@@ -33,17 +34,18 @@ def option_key(name: str) -> str:
     return "randomized" if key == "random" else key
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OptionValues:
     preset: str                                  # full-settings preset name
     map_layout: str = "Standard"
-    categories: Mapping[str, Optional[str]] = field(default_factory=dict)   # option name → preset, None: the preset's
-    start_location: Optional[str] = None         # None: the preset's
-    wall_jump: Optional[str] = None
-    save_animals: Optional[str] = None
+    # option name → preset (None: the full preset's)
+    categories: Mapping[str, str | None] = field(default_factory=dict[str, str | None])
+    start_location: str | None = None            # None: the preset's
+    wall_jump: str | None = None
+    save_animals: str | None = None
 
 
-def build_settings(full_presets: Mapping[str, Mapping[str, Any]], values: OptionValues, seed: int) -> Dict[str, Any]:
+def build_settings(full_presets: Mapping[str, Mapping[str, Any]], values: OptionValues, seed: int) -> dict[str, Any]:
     if values.map_layout not in MAP_LAYOUTS:
         raise ValueError(f"unknown map layout {values.map_layout!r}")
     settings = copy.deepcopy(dict(full_presets[values.preset]))

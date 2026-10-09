@@ -12,7 +12,8 @@ from __future__ import annotations
 
 import ctypes as C
 import os
-from typing import Dict, Optional
+from typing import overload
+
 
 BUTTONS = {"b": 0, "y": 1, "select": 2, "start": 3, "up": 4, "down": 5, "left": 6, "right": 7, "a": 8, "x": 9,
            "l": 10, "r": 11}
@@ -38,7 +39,13 @@ class Memory:
     def __init__(self, pointer: int, size: int):
         self.view = (C.c_uint8 * size).from_address(pointer)
 
-    def __getitem__(self, key):
+    @overload
+    def __getitem__(self, key: int) -> int: ...
+
+    @overload
+    def __getitem__(self, key: slice) -> bytes: ...
+
+    def __getitem__(self, key: int | slice) -> int | bytes:
         return bytes(self.view[key]) if isinstance(key, slice) else self.view[key]
 
     def __setitem__(self, offset: int, value: int) -> None:
@@ -55,15 +62,19 @@ class Memory:
             self.view[offset + i] = b
 
 
+def _audio_batch(data: int, frames: int) -> int:
+    return frames   # audio is discarded
+
+
 class Emulator:
-    def __init__(self, rom: bytes, core_path: Optional[str] = None):
+    def __init__(self, rom: bytes, core_path: str | None = None):
         core_path = core_path or os.environ.get("SMMR_SNES_CORE", "/tmp/snes9x/libretro/snes9x_libretro.so")
         self.lib = C.CDLL(core_path)
-        self.held: Dict[int, bool] = {}
+        self.held: dict[int, bool] = {}
         self.frame = 0
         # Keep the callbacks referenced: the core holds raw pointers to them.
         self._callbacks = [ENVIRONMENT(self._environment), VIDEO_REFRESH(lambda *a: None),
-                           AUDIO_SAMPLE(lambda *a: None), AUDIO_SAMPLE_BATCH(lambda data, frames: frames),
+                           AUDIO_SAMPLE(lambda *a: None), AUDIO_SAMPLE_BATCH(_audio_batch),
                            INPUT_POLL(lambda: None), INPUT_STATE(self._input_state)]
         env, video, audio, audio_batch, poll, state = self._callbacks
         self.lib.retro_set_environment(env)

@@ -18,7 +18,7 @@ import sys
 import zipfile
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .core.abi import Abi
 from .core.catalog import Catalog
@@ -29,14 +29,14 @@ REPO = Path(__file__).resolve().parents[2]
 
 def data(name: str) -> bytes:
     """A file in the world's data/ (works from a zipped .apworld too)."""
-    content = pkgutil.get_data(__package__, f"data/{name}")
+    content = pkgutil.get_data(__name__.rpartition(".")[0], f"data/{name}")
     assert content is not None
     return content
 
 
-def _bundled(name: str) -> Optional[bytes]:
+def _bundled(name: str) -> bytes | None:
     try:
-        return pkgutil.get_data(__package__, name)
+        return pkgutil.get_data(__name__.rpartition(".")[0], name)
     except OSError:
         return None
 
@@ -59,7 +59,7 @@ def _find_engine() -> SubprocessEngine:
     return _extract_bundled_engine(maps_dir)
 
 
-def _extract_bundled_engine(maps_dir: Optional[Path]) -> SubprocessEngine:
+def _extract_bundled_engine(maps_dir: Path | None) -> SubprocessEngine:
     executable = "smmr-engine.exe" if sys.platform == "win32" else "smmr-engine"
     binary = _bundled(f"bin/{platform_tag()}/{executable}")
     if binary is None:
@@ -88,7 +88,7 @@ def ensure_map_pool(map_layout: str) -> None:
 
 
 @lru_cache(maxsize=None)
-def catalog_info() -> Dict[str, Any]:
+def catalog_info() -> dict[str, Any]:
     """The engine's `info`, as recorded in data/info.json."""
     return json.loads(data("info.json"))
 
@@ -104,6 +104,6 @@ def abi() -> Abi:
 
 
 @lru_cache(maxsize=None)
-def full_presets() -> Dict[str, Any]:
+def full_presets() -> dict[str, Any]:
     """Map Rando's full-settings presets, by name."""
     return json.loads(data("presets.json"))

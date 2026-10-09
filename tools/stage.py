@@ -30,7 +30,7 @@ def load(path: str):
     return json.loads(Path(path).read_text())
 
 
-def save(obj, path: str) -> None:
+def save(obj: object, path: str) -> None:
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text(json.dumps(obj, indent=1))
 

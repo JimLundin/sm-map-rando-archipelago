@@ -1,14 +1,14 @@
 """Stage S5b: Map Rando's ROM → our multiworld ROM. Pure: bytes in, bytes out."""
 from __future__ import annotations
 
-from typing import List
+
 
 from . import ips
 from .abi import Abi, snes_to_pc
 from .catalog import Catalog
 
 
-def location_bits(rom: bytes, catalog: Catalog) -> List[int]:
+def location_bits(rom: bytes | bytearray, catalog: Catalog) -> list[int]:
     """Each location's collected-item bit: its item PLM's room argument."""
     return [rom[loc.plm_addr + 4] | rom[loc.plm_addr + 5] << 8 for loc in catalog.locations]
 

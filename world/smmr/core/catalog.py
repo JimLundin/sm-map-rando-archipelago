@@ -8,13 +8,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Dict, List, Mapping, Tuple
+from collections.abc import Mapping
+from typing import Any
 
 ITEM_ID_BASE = 0x5300   # Archipelago item id = ITEM_ID_BASE + Map Rando item id
 LOCATION_ID_BASE = 0x5300   # Archipelago location id = LOCATION_ID_BASE + Map Rando item location index
 
 # Map Rando item name → (Archipelago name, unique). Unique items are one-of upgrades; the others are tanks and ammo.
-ITEM_NAMES: Dict[str, Tuple[str, bool]] = {
+ITEM_NAMES: dict[str, tuple[str, bool]] = {
     "ETank": ("Energy Tank", False),
     "Missile": ("Missile", False),
     "Super": ("Super Missile", False),
@@ -43,7 +44,7 @@ ITEM_NAMES: Dict[str, Tuple[str, bool]] = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ItemKind:
     rando_id: int
     rando_name: str
@@ -55,7 +56,7 @@ class ItemKind:
         return ITEM_ID_BASE + self.rando_id
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ItemLocation:
     index: int
     room_id: int
@@ -77,12 +78,12 @@ class ItemLocation:
 @dataclass(frozen=True)
 class Catalog:
     version: int
-    items: List[ItemKind]
-    locations: List[ItemLocation]
+    items: list[ItemKind]
+    locations: list[ItemLocation]
 
     @staticmethod
     def from_info(info: Mapping[str, Any]) -> "Catalog":
-        items = []
+        items: list[ItemKind] = []
         for rando_id, rando_name in enumerate(info["items"]):
             name, unique = ITEM_NAMES[rando_name]
             items.append(ItemKind(rando_id, rando_name, name, unique))
@@ -96,9 +97,9 @@ class Catalog:
         return self._locations_by_node[(room_id, node_id)]
 
     @cached_property
-    def _items_by_rando_name(self) -> Dict[str, ItemKind]:
+    def _items_by_rando_name(self) -> dict[str, ItemKind]:
         return {item.rando_name: item for item in self.items}
 
     @cached_property
-    def _locations_by_node(self) -> Dict[Tuple[int, int], ItemLocation]:
+    def _locations_by_node(self) -> dict[tuple[int, int], ItemLocation]:
         return {(loc.room_id, loc.node_id): loc for loc in self.locations}

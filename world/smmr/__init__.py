@@ -27,7 +27,7 @@ from .patch import GAME, SM_JU_MD5, SMMRProcedurePatch
 
 _catalog = runtime.catalog()
 _rando_names = {item.name: item.rando_name for item in _catalog.items}
-EARLY_LOCATIONS = 4
+EARLY_LOCATIONS = 4   # as the engine's `world` checks (engine/src/world.rs)
 
 
 def ap_classification(classification: Classification) -> ItemClassification:
@@ -74,7 +74,7 @@ class SMMRWorld(World):
 
     game = GAME
     options_dataclass = SMMROptions
-    options: SMMROptions
+    options: SMMROptions  # pyright: ignore[reportInvalidTypeForm]  (made with make_dataclass, from the presets)
     settings: ClassVar[SMMRSettings]
     settings_key = "smmr_options"
     topology_present = True

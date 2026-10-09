@@ -2,7 +2,7 @@
 from core.abi import snes_to_pc
 from core.catalog import ITEM_ID_BASE, LOCATION_ID_BASE
 from core.mwpatch import location_bits
-from core.sync import Received, Snapshot, step
+from core.sync import Action, Deliver, Received, SendLocations, Snapshot, step
 
 VARIA, CHARGE = 12, 5
 
@@ -19,13 +19,22 @@ def rom_table(rom, abi):
     return rom[start:start + abi.wram["collected_items_size"] * 8]
 
 
-def poll(game, abi, table, checked, received):
+def poll(game, abi, table, checked, received) -> list[Action]:
+    """One client poll: the emulator stands in for SNI."""
     actions = step(abi, table, snapshot(game, abi), checked, received)
-    if actions.mailbox:
-        seq, words = actions.mailbox
-        game.wram.write(abi.wram["mailbox_item"], words)
-        game.wram.write_u16(abi.wram["mailbox_seq"], seq)
+    for action in actions:
+        match action:
+            case Deliver(seq, words):
+                game.wram.write(abi.wram["mailbox_item"], words)
+                game.wram.write_u16(abi.wram["mailbox_seq"], seq)
+            case _:
+                pass
     return actions
+
+
+def sent(actions: list[Action]) -> list[int]:
+    """The location ids the actions send."""
+    return [location_id for action in actions if isinstance(action, SendLocations) for location_id in action.location_ids]
 
 
 def test_the_client_delivers_received_items_in_order(game, abi, patched_rom):
@@ -46,8 +55,8 @@ def test_a_collected_location_is_reported_once(game, abi, patched_rom, catalog):
     w = abi.wram
     game.wram[w["collected_items"] + (bit >> 3)] |= 1 << (bit & 7)   # as the item PLM's pickup does
     actions = poll(game, abi, table, set(), [])
-    assert actions.new_locations == [LOCATION_ID_BASE + location.index]
-    assert poll(game, abi, table, set(actions.new_locations), []).new_locations == []
+    assert sent(actions) == [LOCATION_ID_BASE + location.index]
+    assert sent(poll(game, abi, table, set(sent(actions)), [])) == []
 
 
 def test_rom_identifies_itself(patched_rom, abi):

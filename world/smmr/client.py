@@ -2,14 +2,14 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, assert_never
 
 from NetUtils import ClientStatus
 from worlds.AutoSNIClient import SNIClient
 
 from . import runtime
 from .core.abi import snes_to_pc as pc
-from .core.sync import Received, Snapshot, step
+from .core.sync import Deliver, Goal, Received, SendLocations, Snapshot, step
 
 if TYPE_CHECKING:
     from SNIClient import SNIContext
@@ -24,7 +24,7 @@ class SMMRClient(SNIClient):
     patch_suffix = ".apsmmr"
 
     def __init__(self) -> None:
-        self.location_table: Optional[bytes] = None
+        self.location_table: bytes | None = None
 
     async def validate_rom(self, ctx: "SNIContext") -> bool:
         from SNIClient import snes_read
@@ -61,17 +61,19 @@ class SMMRClient(SNIClient):
             return
         snapshot = Snapshot(int.from_bytes(game_state, "little"), bits, int.from_bytes(count, "little"))
         received = [Received(item.item, item.player) for item in ctx.items_received]
-        actions = step(abi, self.location_table, snapshot, ctx.locations_checked, received)
-
-        if actions.new_locations:
-            ctx.locations_checked |= set(actions.new_locations)
-            await ctx.send_msgs([{"cmd": "LocationChecks", "locations": actions.new_locations}])
-        if actions.mailbox is not None:
-            seq, words = actions.mailbox
-            snes_buffered_write(ctx, WRAM_START + wram["mailbox_item"], words)
-            await snes_flush_writes(ctx)
-            snes_buffered_write(ctx, WRAM_START + wram["mailbox_seq"], seq.to_bytes(2, "little"))
-            await snes_flush_writes(ctx)
-        if actions.finished and not ctx.finished_game:
-            ctx.finished_game = True
-            await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
+        for action in step(abi, self.location_table, snapshot, ctx.locations_checked, received):
+            match action:
+                case SendLocations(location_ids):
+                    ctx.locations_checked |= set(location_ids)
+                    await ctx.send_msgs([{"cmd": "LocationChecks", "locations": list(location_ids)}])
+                case Deliver(seq, words):
+                    snes_buffered_write(ctx, WRAM_START + wram["mailbox_item"], words)
+                    await snes_flush_writes(ctx)
+                    snes_buffered_write(ctx, WRAM_START + wram["mailbox_seq"], seq.to_bytes(2, "little"))
+                    await snes_flush_writes(ctx)
+                case Goal():
+                    if not ctx.finished_game:
+                        ctx.finished_game = True
+                        await ctx.send_msgs([{"cmd": "StatusUpdate", "status": ClientStatus.CLIENT_GOAL}])
+                case _:
+                    assert_never(action)

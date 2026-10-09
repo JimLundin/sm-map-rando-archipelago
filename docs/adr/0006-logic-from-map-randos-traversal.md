@@ -23,7 +23,9 @@ four states per vertex and continues from step to step.
   locations by area.
 - Some starts reach a single location with no items, where Archipelago's fill can corner itself (1 in 24 seeds
   failed). While fewer than 4 of our locations are reachable, `pre_fill` places the item of ours that opens the most
-  locations at one of them, as Map Rando's own placement does in its first steps.
+  locations at one of them, as Map Rando's own placement does in its first steps. A world is kept only if that works
+  from its start (`world::check`): some random starts need two items to leave one location, which no placement can
+  satisfy (3 in 12 random-start seeds failed); Map Rando's placement retries those too.
 - The patch carries the world and the placement; the engine builds the `Randomization` from them.
 
 ## Consequences

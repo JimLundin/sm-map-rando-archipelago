@@ -2,10 +2,11 @@
 upstream preset is a new option value without code changes. `values()` turns them into S1's `OptionValues`."""
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import make_dataclass
-from typing import Dict, List, Optional, Sequence, Type
+from typing import Any
 
-from Options import Choice, PerGameCommonOptions
+from Options import Choice, Option, PerGameCommonOptions
 
 from . import runtime
 from .core.options import (CATEGORIES, MAP_LAYOUTS, SAVE_ANIMALS, START_LOCATIONS, WALL_JUMP, OptionValues,
@@ -15,15 +16,15 @@ FROM_PRESET = "Preset"   # value 0 of an override: keep the full preset's
 
 
 class MapRandoChoice(Choice):
-    rando_names: List[Optional[str]]   # Map Rando name of each option value (None: the full preset's)
+    rando_names: list[str | None]   # Map Rando name of each option value (None: the full preset's)
 
     @property
-    def rando_name(self) -> Optional[str]:
+    def rando_name(self) -> str | None:
         return self.rando_names[self.value]
 
 
-def _choice(class_name: str, display_name: str, doc: str, names: Sequence[Optional[str]], default: int = 0) -> Type:
-    attrs: Dict[str, object] = {"__doc__": doc, "__module__": __name__, "display_name": display_name,
+def _choice(class_name: str, display_name: str, doc: str, names: Sequence[str | None], default: int = 0) -> type[MapRandoChoice]:
+    attrs: dict[str, object] = {"__doc__": doc, "__module__": __name__, "display_name": display_name,
                                 "default": default, "rando_names": list(names)}
     for value, name in enumerate(names):
         attrs[f"option_{option_key(name or FROM_PRESET)}"] = value
@@ -42,7 +43,7 @@ _DOCS = {
     "doors": "Which doors are locked and with what (doors preset).",
 }
 
-OPTION_TYPES: Dict[str, Type] = {
+OPTION_TYPES: dict[str, type[Option[Any]]] = {
     "preset": _choice("Preset", "Preset", "Map Rando's full-settings preset (maprando.com). The options below "
                       "replace parts of it.", _full),
     "map_layout": _choice("MapLayout", "Map Layout", "How rooms are connected. Vanilla is the original map; the "

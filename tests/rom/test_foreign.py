@@ -10,7 +10,7 @@ from core import mwpatch
 from core.catalog import LOCATION_ID_BASE
 from core.engine import SubprocessEngine
 from core.mwplan import message
-from core.sync import Snapshot, step
+from core.sync import SendLocations, Snapshot, step
 
 MORPH_BALL_ROOM_ITEM = 13          # an open item; Samus starts left of it and walks right to pick it up
 OTHERS = {10: "Progression", 42: "Useful", 77: "Filler"}   # a shot block, a shot block, a chozo orb
@@ -94,5 +94,5 @@ def test_picking_up_a_foreign_item_shows_its_message_gives_nothing_and_the_clien
                         game.wram[w["collected_items"]:w["collected_items"] + w["collected_items_size"]],
                         game.wram.u16(w["received_count"]))
     actions = step(abi, foreign_rom[table_start:table_start + w["collected_items_size"] * 8], snapshot, set(), [])
-    assert actions.new_locations == [LOCATION_ID_BASE + MORPH_BALL_ROOM_ITEM]
+    assert actions == [SendLocations((LOCATION_ID_BASE + MORPH_BALL_ROOM_ITEM,))]
 
