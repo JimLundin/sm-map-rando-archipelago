@@ -1,9 +1,9 @@
 """Run one pipeline stage from artifact files, for a short edit → run loop.
 
-    python tools/stage.py upgrade fixtures/settings/default-vanilla.json -o build/settings.json
-    python tools/stage.py randomize build/settings.json --seed 1 -o build/seed.json
-    python tools/stage.py rom build/settings.json build/seed.json --rom vanilla.sfc -o build/mr.sfc
-    python tools/stage.py info -o build/info.json
+    uv run tools/stage.py upgrade fixtures/settings/default-vanilla.json -o build/settings.json
+    uv run tools/stage.py randomize build/settings.json --seed 1 -o build/seed.json
+    uv run tools/stage.py rom build/settings.json build/seed.json --rom vanilla.sfc -o build/mr.sfc
+    uv run tools/stage.py info -o build/info.json
 """
 from __future__ import annotations
 

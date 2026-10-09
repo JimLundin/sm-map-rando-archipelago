@@ -4,7 +4,7 @@ The defines come from world/smmr/data/abi.toml. asar patches a ROM image rather 
 source is assembled onto two blank 4 MiB images, one of 00 and one of FF bytes: every byte that differs from its
 blank in either image was written by the patch.
 
-    python tools/build_mw.py           # ASAR=path/to/asar to use another assembler build
+    uv run tools/build_mw.py           # ASAR=path/to/asar to use another assembler build
 """
 from __future__ import annotations
 

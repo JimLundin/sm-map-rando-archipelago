@@ -9,7 +9,7 @@ requires-python = ">=3.12"   # what Archipelago's installer bundles (3.12; it su
 dynamic = ["version"]        # engine/Cargo.toml
 
 [dependency-groups]
-dev = ["pytest", "pyright", "backports.zstd", "maturin>=1.9,<2"]
+dev = ["pytest", "pyright", "backports.zstd", "maturin>=1.9,<2", "cmake"]   # cmake: tools/dev.py asar
 
 [tool.maturin]
 manifest-path = "engine/Cargo.toml"

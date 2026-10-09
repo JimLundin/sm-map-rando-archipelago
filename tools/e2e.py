@@ -1,7 +1,7 @@
 """End to end, from the packaged world: generate with dist/smmr.apworld in an Archipelago checkout, patch the
 player's ROM the way the client does, and boot it to gameplay in the emulator.
 
-    python tools/e2e.py --ap /path/to/clean/Archipelago --rom vanilla.sfc
+    uv run tools/e2e.py --ap /path/to/clean/Archipelago --rom vanilla.sfc
 
 The Archipelago checkout must not have worlds/smmr (the development symlink): the .apworld is copied to its
 custom_worlds/.

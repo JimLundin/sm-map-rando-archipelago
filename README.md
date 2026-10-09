@@ -25,9 +25,10 @@ See `docs/architecture.md` for the diagram. In short:
 
 ## Development
 
-Requirements: [uv](https://docs.astral.sh/uv/), Rust, CMake and a C++ compiler (for asar), a libretro SNES core for
-the ROM tests (e.g. snes9x; `SMMR_SNES_CORE`), an Archipelago checkout for the World tests. uv provides Python 3.12
-(what Archipelago's installer bundles) and the dev tools, and builds the engine module (maturin) into `.venv`.
+Requirements: [uv](https://docs.astral.sh/uv/), Rust, a C++ compiler (for asar), a libretro SNES core for the ROM
+tests (e.g. snes9x; `SMMR_SNES_CORE`), an Archipelago checkout for the World tests. uv provides Python 3.12 (what
+Archipelago's installer bundles) and the dev tools (pytest, pyright, maturin, CMake), and builds the engine module
+into `.venv`.
 
 ```
 git clone --recursive … && cd …

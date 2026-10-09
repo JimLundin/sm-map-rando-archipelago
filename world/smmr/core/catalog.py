@@ -1,7 +1,7 @@
 """The world's fixed vocabulary: its items and item locations, with their Archipelago names and ids.
 
 Built from `data/info.json`, which is the engine's `info` output (regenerate it with
-`python tools/stage.py info -o world/smmr/data/info.json`). An item's Map Rando name is its key in seeds and settings;
+`uv run tools/dev.py data`). An item's Map Rando name is its key in seeds and settings;
 its index in `items` is the Map Rando item id (the ROM's id too).
 """
 from __future__ import annotations

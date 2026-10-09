@@ -1,7 +1,7 @@
 """Download the Map Rando data that isn't in its repository into the MapRandomizer checkout, where the engine looks.
 
-    python tools/fetch_data.py            # Mosaic tile patches (needed to build any ROM)
-    python tools/fetch_data.py --maps     # also the Small/Standard/Wild map pools (~1 GB)
+    uv run tools/fetch_data.py            # Mosaic tile patches (needed to build any ROM)
+    uv run tools/fetch_data.py --maps     # also the Small/Standard/Wild map pools (~1 GB)
 
 The world downloads map pools itself when a seed needs one; this is for development and building the .apworld.
 """

@@ -4,8 +4,8 @@ For each random combination of presets, Map Rando places items (`randomize`); `r
 before k, must make exactly the locations of its steps up to k reachable (locations holding Nothing aside: the
 Desolate pool's steps omit them). It also checks that more items never lose a location.
 
-    python tools/check_reach.py [random seed] [number of settings]      # CHAIN=1: continue the traversal
-    python tools/check_reach.py <saved mismatch .json>                   # re-check one
+    uv run tools/check_reach.py [random seed] [number of settings]      # CHAIN=1: continue the traversal
+    uv run tools/check_reach.py <saved mismatch .json>                   # re-check one
 
 Mismatches are saved to /tmp/smmr-reach-mismatch-<n>.json. Known: in a few percent of seeds, Map Rando's traversal
 (at most four states per vertex) finds a location one step earlier or later than a fresh traversal does, and more
@@ -89,7 +89,8 @@ def check(engine: NativeEngine, catalog: Catalog, settings: JsonObject, seed: Js
                 have[entry["item"]] += 1
         expected.append(frozenset(seen))
     inventories.append(dict(have))
-    answers = engine.reach_unsessioned({"settings": settings, "world": world, "inventories": inventories, "chain": CHAIN})
+    request = {"settings": settings, "world": world, "inventories": inventories, "chain": CHAIN}
+    answers = engine.reach_unsessioned(request)
     real = frozenset(i for i, item in enumerate(randomization["item_placement"]) if item != "Nothing")
     reached = [frozenset(answer["locations"]) for answer in answers]
     mismatches: list[Mismatch] = []
