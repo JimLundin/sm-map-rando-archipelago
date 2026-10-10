@@ -1,6 +1,6 @@
 [package]
 name = "pysmmaprando_upstream"
-version = "0.123.3"
+version = "0.123.4"
 edition = "2024"
 description = "Python bindings to the Super Metroid Map Randomizer, for use by the Archipelago world"
 
