@@ -25,6 +25,7 @@ from .Options import SMMROptions
 from .settings_builder import build_customize_settings, build_randomizer_settings
 from .OptionPresets import OPTION_GROUPS, OPTIONS_PRESETS
 from .Rom import ROM_PLAYERDATA_COUNT, SMJUHASH, SMMapRandoProcedurePatch, build_ap_data, credits_text
+from .version import WORLD_VERSION
 
 logger = logging.getLogger("Super Metroid Map Rando Upstream")
 
@@ -445,6 +446,7 @@ class SMMapRandoWorld(World):
                 "customize": build_customize_settings(self),
                 "ap": build_ap_data(self, location_items, player_ids),
                 "rom_name": self.rom_name.decode("ascii"),
+                "world_version": WORLD_VERSION,
             }
             import json
             patch = SMMapRandoProcedurePatch(player=self.player, player_name=self.player_name)

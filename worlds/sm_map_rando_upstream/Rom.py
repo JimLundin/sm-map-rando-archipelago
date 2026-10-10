@@ -20,6 +20,7 @@ import Utils
 from worlds.Files import APPatchExtension, APProcedurePatch
 
 from .Items import NOTHING_INDEX, OFFWORLD_ITEM_FIRST_ID
+from .version import WORLD_VERSION
 
 if TYPE_CHECKING:
     from . import SMMapRandoWorld
@@ -242,6 +243,23 @@ def apply_archipelago(rom: bytearray, base_rom: bytes, ap: Dict[str, Any], rom_n
     rom[ROM_NAME_ADDR:ROM_NAME_ADDR + ROM_NAME_SIZE] = rom_name.ljust(ROM_NAME_SIZE, b"\0")[:ROM_NAME_SIZE]
 
 
+RANDO_DATA_KEYS = ("settings", "randomization", "customize", "ap", "rom_name")
+
+
+def check_rando_data(data: Dict[str, Any]) -> None:
+    """The patch must come from this version of the world: the native patcher only reads its own version's data. The
+    Launcher shows only the exception's message, so it says what to do."""
+    made_by = data.get("world_version", "0.123.3")  # 0.123.3 didn't record it
+    if made_by != WORLD_VERSION:
+        raise ValueError(f"This patch was made by Super Metroid Map Rando Upstream {made_by}, but {WORLD_VERSION} is "
+                         f"installed. Patch it with {made_by} (the version that generated the seed), or generate the "
+                         f"seed again with {WORLD_VERSION}.")
+    missing = [key for key in RANDO_DATA_KEYS if key not in data]
+    if missing:
+        raise ValueError(f"This Super Metroid Map Rando Upstream patch is incomplete (no {', '.join(missing)} in "
+                         f"rando_data.json): generate the seed again.")
+
+
 class SMMapRandoPatchExtensions(APPatchExtension):
     game = "Super Metroid Map Rando Upstream"
 
@@ -249,6 +267,7 @@ class SMMapRandoPatchExtensions(APPatchExtension):
     def patch_rom(caller: APProcedurePatch, rom: bytes, rando_data_file: str) -> bytes:
         from . import native
         data = json.loads(caller.get_file(rando_data_file).decode("utf-8"))
+        check_rando_data(data)
         customize = data["customize"]
         native.ensure_samus_sprite(customize["samus_sprite"])
         native.ensure_mosaic_patches()  # needed by Map Rando's patcher for all room themes

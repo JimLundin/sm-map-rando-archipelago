@@ -3,9 +3,12 @@ Tests of the Archipelago part of ROM patching (basepatch, item tables, item PLMs
 real Super Metroid ROM, so it is not exercised here: a synthetic ROM stands in for its output.
 """
 import unittest
+from unittest import mock
 
 from ..Locations import LOCATIONS
-from ..Rom import MAPRANDO_LOAD_HOOK, apply_archipelago, get_symbols, rom_item_name, snes_to_pc, write_checksum
+from ..Rom import (MAPRANDO_LOAD_HOOK, RANDO_DATA_KEYS, apply_archipelago, check_rando_data, get_symbols, rom_item_name,
+                   snes_to_pc, write_checksum)
+from ..version import WORLD_VERSION
 
 
 def synthetic_roms():
@@ -64,3 +67,32 @@ class TestApplyArchipelago(unittest.TestCase):
         with self.assertRaises(Exception):
             apply_archipelago(rom, base, {"player_ids": [0], "player_names": ["Archipelago"], "locations": [],
                                           "own_player_id": 1, "death_link": 0, "remote_items": False}, b"SMMU")
+
+
+class TestRandoDataCheck(unittest.TestCase):
+    def data(self, **changes):
+        data = {key: {} for key in RANDO_DATA_KEYS}
+        data["world_version"] = WORLD_VERSION
+        data.update(changes)
+        return data
+
+    def test_this_versions_patch_passes(self):
+        check_rando_data(self.data())
+
+    def test_another_versions_patch_names_both_versions(self):
+        with self.assertRaisesRegex(ValueError, f"made by Super Metroid Map Rando Upstream 0.0.1, but "
+                                                f"{WORLD_VERSION} is installed"):
+            check_rando_data(self.data(world_version="0.0.1"))
+
+    def test_unstamped_patch_is_from_0_123_3(self):
+        data = self.data()
+        del data["world_version"]
+        with mock.patch(f"{check_rando_data.__module__}.WORLD_VERSION", "0.124.0"), \
+                self.assertRaisesRegex(ValueError, "made by Super Metroid Map Rando Upstream 0.123.3, but 0.124.0"):
+            check_rando_data(data)
+
+    def test_missing_keys_are_named(self):
+        data = self.data()
+        del data["customize"], data["ap"]
+        with self.assertRaisesRegex(ValueError, r"incomplete \(no customize, ap in rando_data.json\)"):
+            check_rando_data(data)
